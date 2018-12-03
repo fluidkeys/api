@@ -1,0 +1,4 @@
+.vagrant/*
+.secrets.sh
+
+*-cloudimg-console.log
