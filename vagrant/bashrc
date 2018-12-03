@@ -1,0 +1,9 @@
+alias ll="ls -al"
+
+cd ~/go/src/github.com/fluidkeys/api
+
+export DATABASE_URL="postgres://vagrant:password@localhost:5432/vagrant"
+
+if [ -f "/vagrant/.secrets.sh" ]; then
+  . "/vagrant/.secrets.sh"
+fi
