@@ -1,0 +1,11 @@
+#!/bin/sh -eu
+
+
+PAUL_FINGERPRINT="B79F0840DEF12EBBA72FF72D7327A44C2157A758"
+PAUL_ARMORED_KEY=$(gpg --armor --export "$PAUL_FINGERPRINT")
+
+echo "DELETE FROM keys WHERE fingerprint='4:${PAUL_FINGERPRINT}';"
+echo "INSERT INTO keys(fingerprint, armored_public_key) VALUES('4:${PAUL_FINGERPRINT}', '${PAUL_ARMORED_KEY}') RETURNING id AS inserted_key_id;"
+
+echo "INSERT INTO email_key_link(email, key_id) VALUES('paul@fluidkeys.com', (SELECT keys.id FROM keys WHERE keys.fingerprint='4:${PAUL_FINGERPRINT}'));"
+

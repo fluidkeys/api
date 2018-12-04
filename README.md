@@ -5,7 +5,7 @@
 Get a verified OpenPGP public key for the email address:
 
 ```
-GET /directory/email/:email
+GET /emails/:email/key
 ```
 
 ### Parameters
@@ -21,14 +21,14 @@ Status: 200 Found
 Content-Type: application/json
 
 {
-    "publicKey": "<base64 encoded openpgp data>"
+    "armoredPublicKey": "--- BEGIN PGP PUBLIC KEY ---"
 }
 ```
 
 ### Example
 
 ```
-GET https://api.fluidkeys.com/v1/directory/email/tina%40example.com
+curl https://api.fluidkeys.com/v1/email/tina@example.com/key
 ```
 
 # Secrets
@@ -36,25 +36,25 @@ GET https://api.fluidkeys.com/v1/directory/email/tina%40example.com
 ## Send a secret to a public key
 
 ```
-POST /secrets/
+POST /secrets
 ```
 
 ### Parameters
 
-| Name                 | Type   | Description                                                                                   |
-|----------------------|--------|-----------------------------------------------------------------------------------------------|
-| recipientFingerprint | string | **Required.** The fingerprint of the key to send the secret to, prepended with `OPENPGP4FPR:`
-| encryptedSecret      | string | **Required.** Base64-encoded PGP secret data.
+| Name                    | Type   | Description |
+|-------------------------|--------|-------------|
+| recipientFingerprint--- | string | **Required.** The fingerprint of the key to send the secret to, prepended with `OPENPGP4FPR:`
+| `armoredEncryptedSecret | string | **Required.** Base64-encoded PGP secret data.
 
 ### Example
 
 ```
-POST https://api.fluidkeys.com/v1/secrets/
-Content-Type: application/json
+curl -v -X POST -H "Content-Type: application/json" https://api.fluidkeys.com/v1/secrets --data @- << EOF
 {
     "recipientFingerprint": "OPENPGP4FPR:AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB",
-    "encryptedSecret": "hQEMAz2taCwJI2vTAQgAxwpk+pkIQIPgwV8wGTodQbUwXrAu..."
+    "armoredEncryptedSecret": "---- BEGIN PGP MESSAGE --- ..."
 }
+EOF
 ```
 
 ### Response
@@ -68,7 +68,7 @@ Status: 201 Created
 List the stored encrypted secrets for the authenticated public key:
 
 ```
-GET /secrets/
+GET /secrets
 ```
 
 ### Authentication
@@ -125,7 +125,7 @@ The call must be authenticated as the key that is the recipient of the secret.
 | uuid       | uuid | **Required.** The UUID of the secret to delete
 
 
-### Response 
+### Response
 
 
 ```
