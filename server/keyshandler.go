@@ -12,7 +12,7 @@ import (
 func getPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	email := mux.Vars(r)["email"]
 
-	responseData := v1structs.GetPublicKey{}
+	responseData := v1structs.GetPublicKeyResponse{}
 
 	armoredPublicKey, found, err := datastore.GetArmoredPublicKeyForEmail(email)
 	if err != nil {
