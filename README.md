@@ -41,10 +41,10 @@ POST /secrets
 
 ### Parameters
 
-| Name                    | Type   | Description |
-|-------------------------|--------|-------------|
-| recipientFingerprint--- | string | **Required.** The fingerprint of the key to send the secret to, prepended with `OPENPGP4FPR:`
-| `armoredEncryptedSecret | string | **Required.** Base64-encoded PGP secret data.
+| Name                     | Type   | Description |
+|--------------------------|--------|-------------|
+| `recipientFingerprint`   | string | **Required.** The fingerprint of the key to send the secret to, prepended with `OPENPGP4FPR:`
+| `armoredEncryptedSecret` | string | **Required.** ASCII-armored encrypted PGP secret data.
 
 ### Example
 
