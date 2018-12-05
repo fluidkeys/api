@@ -189,6 +189,47 @@ func Migrate() error {
 	return nil
 }
 
+func currentDatabaseName() (string, error) {
+	query := `SELECT current_database()`
+
+	var databaseName string
+
+	err := db.QueryRow(query).Scan(&databaseName)
+	if err != nil {
+		return "", err
+	}
+
+	return databaseName, nil
+}
+
+func DropAllTheTables() error {
+	dbName, err := currentDatabaseName()
+	if err != nil {
+		return fmt.Errorf("failed to get current database name: %v", err)
+	}
+
+	switch dbName {
+	case "fkapi_test", "travis":
+		break
+	default:
+		return fmt.Errorf("blocking delete of database called %s", dbName)
+	}
+
+	var tablesToDrop = []string{
+		"email_key_link",
+		"secrets",
+		"keys",
+	}
+
+	for _, table := range tablesToDrop {
+		_, err := db.Exec("DROP TABLE IF EXISTS " + table)
+		if err != nil {
+			return fmt.Errorf("Error dropping table %s: %v", table, err)
+		}
+	}
+	return nil
+}
+
 func dbFormat(fingerprint fpr.Fingerprint) string {
 	return fmt.Sprintf("4:%s", fingerprint.Hex())
 }
