@@ -15,8 +15,8 @@ func Serve() error {
 	s.HandleFunc("/email/{email}/key", getPublicKeyHandler).Methods("GET")
 
 	s.HandleFunc("/secrets", sendSecretHandler).Methods("POST")
-	s.HandleFunc("/secrets", deleteSecretHandler).Methods("POST")
 	s.HandleFunc("/secrets", listSecretsHandler).Methods("GET")
+	s.HandleFunc("/secrets/{uuid:"+uuid4Pattern+"}", deleteSecretHandler).Methods("DELETE")
 
 	http.Handle("/", s)
 	return http.ListenAndServe(getPort(), nil)
@@ -31,3 +31,5 @@ func getPort() string {
 	}
 	return ":" + port
 }
+
+const uuid4Pattern string = `[0-9a-f]{8}\-[0-9a-f]{4}\-4[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12}`
