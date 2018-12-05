@@ -98,7 +98,6 @@ Authorization: tmpfingerprint: OPENPGP4FPR:AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAAB
 ```
 {
     "secretUuid": "8ef46a96-f735-11e8-a220-7fd225378c68",
-    "contentType": "text/plain"
 }
 ```
 
