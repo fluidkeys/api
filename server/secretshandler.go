@@ -142,7 +142,7 @@ func getAuthorizedUserPublicKey(r *http.Request) (*pgpkey.PgpKey, error) {
 	key, err := pgpkey.LoadFromArmoredPublicKey(armoredPublicKey)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to load key: %v")
+		return nil, fmt.Errorf("failed to load key: %v", err)
 	}
 
 	return key, nil
