@@ -64,6 +64,24 @@ func GetArmoredPublicKeyForEmail(email string) (armoredPublicKey string, found b
 	return armoredPublicKey, true, nil
 }
 
+func GetArmoredPublicKeyForFingerprint(fpr fingerprint.Fingerprint) (armoredPublicKey string, found bool, err error) {
+	dbFingerprint := fmt.Sprintf("4:%s", fpr.Hex())
+
+	query := `SELECT keys.armored_public_key
+		  FROM keys
+		  WHERE keys.fingerprint=$1`
+
+	err = db.QueryRow(query, dbFingerprint).Scan(&armoredPublicKey)
+	if err == sql.ErrNoRows {
+		return "", false, nil // return found=false without an error
+
+	} else if err != nil {
+		return "", false, err
+	}
+
+	return armoredPublicKey, true, nil
+}
+
 // CreateSecret stores the armoredEncryptedSecret (which must be encrypted to
 // the given `recipientFingerprint`) against the recipient public key.
 func CreateSecret(recipientFingerprint fingerprint.Fingerprint, armoredEncryptedSecret string, now time.Time) error {
@@ -98,4 +116,43 @@ func CreateSecret(recipientFingerprint fingerprint.Fingerprint, armoredEncrypted
 		return err
 	}
 	return nil
+}
+
+func GetSecrets(recipientFingerprint fingerprint.Fingerprint) ([]*secret, error) {
+	secrets := make([]*secret, 0)
+
+	query := `SELECT secrets.armored_encrypted_secret, secrets.uuid
+	          FROM secrets
+		  LEFT JOIN keys ON secrets.recipient_key_id=keys.id
+		  WHERE keys.fingerprint=$1`
+
+	dbFingerprint := fmt.Sprintf("4:%s", recipientFingerprint.Hex())
+
+	rows, err := db.Query(query, dbFingerprint)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		secret := secret{}
+		err = rows.Scan(&secret.ArmoredEncryptedSecret, &secret.SecretUUID)
+		if err != nil {
+			return nil, err
+		}
+		secrets = append(secrets, &secret)
+	}
+	err = rows.Err()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return secrets, nil
+}
+
+type secret struct {
+	ArmoredEncryptedSecret string
+	SecretUUID             string
+	CreatedAt              time.Time
 }

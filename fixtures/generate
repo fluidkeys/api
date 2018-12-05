@@ -1,11 +1,26 @@
 #!/bin/sh -eu
 
+# This queries GnuPG for the given fingerprints and prints out SQL that can
+# be copy-pasted into psql to add these keys to the database.
 
+HELLO_FINGERPRINT="7EA0A870E10057D5E153179E52B7723E1E98ED77"
 PAUL_FINGERPRINT="B79F0840DEF12EBBA72FF72D7327A44C2157A758"
-PAUL_ARMORED_KEY=$(gpg --armor --export "$PAUL_FINGERPRINT")
+IAN_FINGERPRINT="E63AF0E74EB5DE3FB72DC981C991709318ECBDE7"
 
-echo "DELETE FROM keys WHERE fingerprint='4:${PAUL_FINGERPRINT}';"
-echo "INSERT INTO keys(fingerprint, armored_public_key) VALUES('4:${PAUL_FINGERPRINT}', '${PAUL_ARMORED_KEY}') RETURNING id AS inserted_key_id;"
 
-echo "INSERT INTO email_key_link(email, key_id) VALUES('paul@fluidkeys.com', (SELECT keys.id FROM keys WHERE keys.fingerprint='4:${PAUL_FINGERPRINT}'));"
+print_sql_for_add_key() {
+  fp=$1
+  email=$2
 
+  ARMORED_KEY=$(gpg --armor --export "$fp")
+
+  echo "DELETE FROM keys WHERE fingerprint='4:${fp}';"
+  echo "INSERT INTO keys(fingerprint, armored_public_key) VALUES('4:${fp}', '${ARMORED_KEY}') RETURNING id AS inserted_key_id;"
+  echo "INSERT INTO email_key_link(email, key_id) VALUES('${email}', (SELECT keys.id FROM keys WHERE keys.fingerprint='4:${fp}'));"
+}
+
+
+
+print_sql_for_add_key "${HELLO_FINGERPRINT}" "hello@fluidkeys.com"
+print_sql_for_add_key "${PAUL_FINGERPRINT}" "paul@fluidkeys.com"
+print_sql_for_add_key "${IAN_FINGERPRINT}" "ian@fluidkeys.com"
