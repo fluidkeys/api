@@ -117,3 +117,42 @@ func CreateSecret(recipientFingerprint fingerprint.Fingerprint, armoredEncrypted
 	}
 	return nil
 }
+
+func GetSecrets(recipientFingerprint fingerprint.Fingerprint) ([]*secret, error) {
+	secrets := make([]*secret, 0)
+
+	query := `SELECT secrets.armored_encrypted_secret, secrets.uuid
+	          FROM secrets
+		  LEFT JOIN keys ON secrets.recipient_key_id=keys.id
+		  WHERE keys.fingerprint=$1`
+
+	dbFingerprint := fmt.Sprintf("4:%s", recipientFingerprint.Hex())
+
+	rows, err := db.Query(query, dbFingerprint)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		secret := secret{}
+		err = rows.Scan(&secret.ArmoredEncryptedSecret, &secret.SecretUUID)
+		if err != nil {
+			return nil, err
+		}
+		secrets = append(secrets, &secret)
+	}
+	err = rows.Err()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return secrets, nil
+}
+
+type secret struct {
+	ArmoredEncryptedSecret string
+	SecretUUID             string
+	CreatedAt              time.Time
+}
