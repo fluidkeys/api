@@ -24,6 +24,11 @@ func init() {
 }
 
 func Serve() error {
+	err := datastore.Initialize(datastore.MustReadDatabaseUrl())
+	if err != nil {
+		panic(err)
+	}
+
 	http.Handle("/", subrouter)
 	return http.ListenAndServe(getPort(), nil)
 }
