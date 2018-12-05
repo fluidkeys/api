@@ -145,6 +145,30 @@ func GetSecrets(recipientFingerprint fpr.Fingerprint) ([]*secret, error) {
 	return secrets, nil
 }
 
+func DeleteSecret(secretUUID uuid.UUID, recipientFingerprint fpr.Fingerprint) (found bool, err error) {
+	query := `DELETE FROM secrets
+	          USING keys
+	          WHERE secrets.recipient_key_id = keys.id
+	          AND secrets.uuid=$1
+		  AND keys.fingerprint=$2`
+
+	result, err := db.Exec(query, secretUUID, dbFormat(recipientFingerprint))
+	if err != nil {
+		return false, err
+	}
+
+	numRowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	if numRowsAffected < 1 {
+		return false, nil // not found (but no error)
+	}
+
+	return true, nil // found and deleted
+}
+
 func dbFormat(fingerprint fpr.Fingerprint) string {
 	return fmt.Sprintf("4:%s", fingerprint.Hex())
 }
