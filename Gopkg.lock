@@ -2,9 +2,31 @@
 
 
 [[projects]]
-  digest = "1:4bd0df0551aa97498c573429f7e5afbf7db10c50f6683b474b1df31754cecc92"
+  digest = "1:794b0374eaa547e9c375736a05da2a740e695c8816e42d30984228e0c1a5436b"
+  name = "github.com/fluidkeys/crypto"
+  packages = [
+    "cast5",
+    "openpgp",
+    "openpgp/armor",
+    "openpgp/elgamal",
+    "openpgp/errors",
+    "openpgp/packet",
+    "openpgp/s2k",
+  ]
+  pruneopts = "UT"
+  revision = "2018-09-13"
+
+[[projects]]
+  digest = "1:6f5133f99813d270fefca08f629be566d79a2d545349f5c31a3aebcbfce82da3"
   name = "github.com/fluidkeys/fluidkeys"
-  packages = ["fingerprint"]
+  packages = [
+    "fingerprint",
+    "openpgpdefs/compression",
+    "openpgpdefs/hash",
+    "openpgpdefs/symmetric",
+    "pgpkey",
+    "policy",
+  ]
   pruneopts = "UT"
   revision = "bf08b13defba21e7aacdb98dfd7f9d814f1a1fc9"
   version = "v0.2.5"
@@ -49,6 +71,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/fluidkeys/fluidkeys/fingerprint",
+    "github.com/fluidkeys/fluidkeys/pgpkey",
     "github.com/gofrs/uuid",
     "github.com/gorilla/mux",
     "github.com/lib/pq",
