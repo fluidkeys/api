@@ -7,6 +7,8 @@ import (
 	"github.com/fluidkeys/api/v1structs"
 	"github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
+	"github.com/gofrs/uuid"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strings"
 	"time"
@@ -160,4 +162,28 @@ func validateSecret(armoredEncryptedSecret string) error {
 }
 
 func deleteSecretHandler(w http.ResponseWriter, r *http.Request) {
+	myPublicKey, err := getAuthorizedUserPublicKey(r)
+
+	if err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	secretUUID, err := uuid.FromString(mux.Vars(r)["uuid"])
+	if err != nil {
+		writeJsonError(w, fmt.Errorf("error parsing UUID: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	found, err := datastore.DeleteSecret(secretUUID, myPublicKey.Fingerprint())
+	if err != nil {
+		writeJsonError(w, fmt.Errorf("error deleting secret: %v", err), http.StatusInternalServerError)
+		return
+	} else if !found {
+		writeJsonError(w, fmt.Errorf("no secret matching that UUID and public key"), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+	w.Write(nil)
 }

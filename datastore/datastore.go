@@ -3,7 +3,7 @@ package datastore
 import (
 	"database/sql"
 	"fmt"
-	"github.com/fluidkeys/fluidkeys/fingerprint"
+	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/gofrs/uuid"
 	"os"
 	"time"
@@ -64,14 +64,12 @@ func GetArmoredPublicKeyForEmail(email string) (armoredPublicKey string, found b
 	return armoredPublicKey, true, nil
 }
 
-func GetArmoredPublicKeyForFingerprint(fpr fingerprint.Fingerprint) (armoredPublicKey string, found bool, err error) {
-	dbFingerprint := fmt.Sprintf("4:%s", fpr.Hex())
-
+func GetArmoredPublicKeyForFingerprint(fingerprint fpr.Fingerprint) (armoredPublicKey string, found bool, err error) {
 	query := `SELECT keys.armored_public_key
 		  FROM keys
 		  WHERE keys.fingerprint=$1`
 
-	err = db.QueryRow(query, dbFingerprint).Scan(&armoredPublicKey)
+	err = db.QueryRow(query, dbFormat(fingerprint)).Scan(&armoredPublicKey)
 	if err == sql.ErrNoRows {
 		return "", false, nil // return found=false without an error
 
@@ -84,15 +82,13 @@ func GetArmoredPublicKeyForFingerprint(fpr fingerprint.Fingerprint) (armoredPubl
 
 // CreateSecret stores the armoredEncryptedSecret (which must be encrypted to
 // the given `recipientFingerprint`) against the recipient public key.
-func CreateSecret(recipientFingerprint fingerprint.Fingerprint, armoredEncryptedSecret string, now time.Time) error {
+func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret string, now time.Time) error {
 	secretUUID, err := uuid.NewV4()
 	if err != nil {
 		return err
 	}
 
 	createdAt := now
-
-	dbFingerprint := fmt.Sprintf("4:%s", recipientFingerprint.Hex())
 
 	query := `INSERT INTO secrets(
                       recipient_key_id,
@@ -107,7 +103,7 @@ func CreateSecret(recipientFingerprint fingerprint.Fingerprint, armoredEncrypted
 
 	_, err = db.Exec(
 		query,
-		dbFingerprint,
+		dbFormat(recipientFingerprint),
 		secretUUID,
 		createdAt,
 		armoredEncryptedSecret,
@@ -118,7 +114,7 @@ func CreateSecret(recipientFingerprint fingerprint.Fingerprint, armoredEncrypted
 	return nil
 }
 
-func GetSecrets(recipientFingerprint fingerprint.Fingerprint) ([]*secret, error) {
+func GetSecrets(recipientFingerprint fpr.Fingerprint) ([]*secret, error) {
 	secrets := make([]*secret, 0)
 
 	query := `SELECT secrets.armored_encrypted_secret, secrets.uuid
@@ -126,9 +122,7 @@ func GetSecrets(recipientFingerprint fingerprint.Fingerprint) ([]*secret, error)
 		  LEFT JOIN keys ON secrets.recipient_key_id=keys.id
 		  WHERE keys.fingerprint=$1`
 
-	dbFingerprint := fmt.Sprintf("4:%s", recipientFingerprint.Hex())
-
-	rows, err := db.Query(query, dbFingerprint)
+	rows, err := db.Query(query, dbFormat(recipientFingerprint))
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +143,34 @@ func GetSecrets(recipientFingerprint fingerprint.Fingerprint) ([]*secret, error)
 	}
 
 	return secrets, nil
+}
+
+func DeleteSecret(secretUUID uuid.UUID, recipientFingerprint fpr.Fingerprint) (found bool, err error) {
+	query := `DELETE FROM secrets
+	          USING keys
+	          WHERE secrets.recipient_key_id = keys.id
+	          AND secrets.uuid=$1
+		  AND keys.fingerprint=$2`
+
+	result, err := db.Exec(query, secretUUID, dbFormat(recipientFingerprint))
+	if err != nil {
+		return false, err
+	}
+
+	numRowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	if numRowsAffected < 1 {
+		return false, nil // not found (but no error)
+	}
+
+	return true, nil // found and deleted
+}
+
+func dbFormat(fingerprint fpr.Fingerprint) string {
+	return fmt.Sprintf("4:%s", fingerprint.Hex())
 }
 
 type secret struct {
