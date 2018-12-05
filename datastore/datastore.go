@@ -13,20 +13,6 @@ import (
 
 var db *sql.DB
 
-func init() {
-	databaseUrl, present := os.LookupEnv("DATABASE_URL")
-
-	if !present {
-		panic("Missing DATABASE_URL, it should be e.g. " +
-			"postgres://vagrant:password@localhost:5432/vagrant")
-	}
-
-	err := Initialize(databaseUrl)
-	if err != nil {
-		panic(err)
-	}
-}
-
 // Initialize initialises a postgres database from the given databaseUrl
 func Initialize(databaseUrl string) error {
 	var err error
@@ -167,6 +153,36 @@ func DeleteSecret(secretUUID uuid.UUID, recipientFingerprint fpr.Fingerprint) (f
 	}
 
 	return true, nil // found and deleted
+}
+
+func MustReadDatabaseUrl() string {
+	databaseUrl, present := os.LookupEnv("DATABASE_URL")
+
+	if !present {
+		panic("Missing DATABASE_URL, it should be e.g. " +
+			"postgres://vagrant:password@localhost:5432/vagrant")
+	}
+	return databaseUrl
+}
+
+func Migrate() error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, sql := range migrateDatabaseStatements {
+		_, err := tx.Exec(sql)
+		if err != nil {
+			return fmt.Errorf("error (rolling back everything): %v", err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func dbFormat(fingerprint fpr.Fingerprint) string {
