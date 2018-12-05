@@ -2,9 +2,11 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
+	"github.com/fluidkeys/api/datastore"
 	"github.com/gorilla/mux"
 )
 
@@ -14,6 +16,7 @@ func init() {
 	r := mux.NewRouter()
 	subrouter = r.PathPrefix("/v1").Subrouter()
 
+	subrouter.HandleFunc("/ping/{word}", pingHandler).Methods("GET")
 	subrouter.HandleFunc("/email/{email}/key", getPublicKeyHandler).Methods("GET")
 	subrouter.HandleFunc("/secrets", sendSecretHandler).Methods("POST")
 	subrouter.HandleFunc("/secrets", listSecretsHandler).Methods("GET")
@@ -33,6 +36,18 @@ func getPort() string {
 		fmt.Println("INFO: No PORT environment variable detected, defaulting to " + port)
 	}
 	return ":" + port
+}
+
+func pingHandler(w http.ResponseWriter, r *http.Request) {
+	err := datastore.Ping()
+	if err != nil {
+		log.Print(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	pingWord := mux.Vars(r)["word"]
+
+	w.Write([]byte(pingWord))
 }
 
 const uuid4Pattern string = `[0-9a-f]{8}\-[0-9a-f]{4}\-4[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12}`

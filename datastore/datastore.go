@@ -26,6 +26,10 @@ func Initialize(databaseUrl string) error {
 	return nil
 }
 
+func Ping() error {
+	return db.Ping()
+}
+
 func GetArmoredPublicKeyForEmail(email string) (armoredPublicKey string, found bool, err error) {
 	query := `SELECT email_key_link.email,
 	                 keys.armored_public_key
