@@ -12,7 +12,7 @@ migrate:
 
 .PHONY: test
 test:
-	go build main.go
+	go test -v -failfast ./...
 
 .PHONY: jenkins_deploy_to_heroku
 jenkins_deploy_to_heroku:
