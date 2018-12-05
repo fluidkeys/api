@@ -2,8 +2,8 @@ CREATE TABLE IF NOT EXISTS secrets (
   id BIGSERIAL PRIMARY KEY, 
   uuid UUID UNIQUE NOT NULL,
   created_at TIMESTAMP NOT NULL,
-  armored_encrypted_secret TEXT NOT NULL,
-  delete_token UUID NOT NULL
+  recipient_key_id INT NOT NULL REFERENCES keys(id) ON DELETE CASCADE,
+  armored_encrypted_secret TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS keys (
