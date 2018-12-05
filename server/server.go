@@ -8,17 +8,20 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func Serve() error {
+var subrouter *mux.Router
+
+func init() {
 	r := mux.NewRouter()
-	s := r.PathPrefix("/v1").Subrouter()
+	subrouter = r.PathPrefix("/v1").Subrouter()
 
-	s.HandleFunc("/email/{email}/key", getPublicKeyHandler).Methods("GET")
+	subrouter.HandleFunc("/email/{email}/key", getPublicKeyHandler).Methods("GET")
+	subrouter.HandleFunc("/secrets", sendSecretHandler).Methods("POST")
+	subrouter.HandleFunc("/secrets", listSecretsHandler).Methods("GET")
+	subrouter.HandleFunc("/secrets/{uuid:"+uuid4Pattern+"}", deleteSecretHandler).Methods("DELETE")
+}
 
-	s.HandleFunc("/secrets", sendSecretHandler).Methods("POST")
-	s.HandleFunc("/secrets", listSecretsHandler).Methods("GET")
-	s.HandleFunc("/secrets/{uuid:"+uuid4Pattern+"}", deleteSecretHandler).Methods("DELETE")
-
-	http.Handle("/", s)
+func Serve() error {
+	http.Handle("/", subrouter)
 	return http.ListenAndServe(getPort(), nil)
 }
 
