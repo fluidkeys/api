@@ -64,6 +64,24 @@ func GetArmoredPublicKeyForEmail(email string) (armoredPublicKey string, found b
 	return armoredPublicKey, true, nil
 }
 
+func GetArmoredPublicKeyForFingerprint(fpr fingerprint.Fingerprint) (armoredPublicKey string, found bool, err error) {
+	dbFingerprint := fmt.Sprintf("4:%s", fpr.Hex())
+
+	query := `SELECT keys.armored_public_key
+		  FROM keys
+		  WHERE keys.fingerprint=$1`
+
+	err = db.QueryRow(query, dbFingerprint).Scan(&armoredPublicKey)
+	if err == sql.ErrNoRows {
+		return "", false, nil // return found=false without an error
+
+	} else if err != nil {
+		return "", false, err
+	}
+
+	return armoredPublicKey, true, nil
+}
+
 // CreateSecret stores the armoredEncryptedSecret (which must be encrypted to
 // the given `recipientFingerprint`) against the recipient public key.
 func CreateSecret(recipientFingerprint fingerprint.Fingerprint, armoredEncryptedSecret string, now time.Time) error {
