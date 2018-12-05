@@ -8,15 +8,11 @@ run_collectors:
 
 .PHONY: migrate
 migrate:
-	./migrations/migrate migrations/*.sql
-
-.PHONY: migrate_heroku
-migrate_heroku:
-	MIGRATE_HEROKU=1 ./migrations/migrate migrations/*.sql
+	go run cmd/migrate/migrate.go
 
 .PHONY: test
 test:
-	go build main.go
+	go test -v -failfast ./...
 
 .PHONY: jenkins_deploy_to_heroku
 jenkins_deploy_to_heroku:

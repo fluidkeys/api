@@ -76,10 +76,12 @@ create_postgresql_database_and_user() {
     # username will automatically access that database.
     CREATE_USER="createuser --superuser vagrant"
     CREATE_DATABASE="createdb --owner vagrant vagrant"
+    CREATE_TEST_DATABASE="createdb --owner vagrant fkapi_test"
 
     # Run as postgres user, it has permission to do this
     su -c "${CREATE_USER}" postgres || true
     su -c "${CREATE_DATABASE}" postgres || true
+    su -c "${CREATE_TEST_DATABASE}" postgres || true
 
     echo "ALTER USER vagrant WITH ENCRYPTED PASSWORD 'password';" |su -c psql postgres
 }

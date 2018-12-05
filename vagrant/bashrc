@@ -3,6 +3,7 @@ alias ll="ls -al"
 cd ~/go/src/github.com/fluidkeys/api
 
 export DATABASE_URL="postgres://vagrant:password@localhost:5432/vagrant"
+export TEST_DATABASE_URL="postgres://vagrant:password@localhost:5432/fkapi_test"
 
 if [ -f "/vagrant/.secrets.sh" ]; then
   . "/vagrant/.secrets.sh"
