@@ -15,8 +15,8 @@ func Serve() error {
 	s.HandleFunc("/email/{email}/key", getPublicKeyHandler).Methods("GET")
 
 	s.HandleFunc("/secrets", sendSecretHandler).Methods("POST")
-	s.HandleFunc("/secrets", receiveSecretsHandler).Methods("GET")
 	s.HandleFunc("/secrets", deleteSecretHandler).Methods("POST")
+	s.HandleFunc("/secrets", listSecretsHandler).Methods("GET")
 
 	http.Handle("/", s)
 	return http.ListenAndServe(getPort(), nil)
