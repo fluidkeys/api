@@ -78,16 +78,14 @@ The call must be authenticated with a public key.
 ### Example
 
 ```
-GET https://api.fluidkeys.com/v1/secrets/
-Content-Type: application/json
-Authorization: tmpfingerprint: OPENPGP4FPR:AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB
+curl -v -H "Authorization: tmpfingerprint: OPENPGP4FPR:AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB" https://api.fluidkeys.com/v1/secrets
 
 ---
 200 Found
 {
     "secrets": [{
-        "encryptedMetadata": "<base64-encoded binary PGP message>"
-        "encryptedContent": "<base64-encoded binary PGP message>",
+        "encryptedMetadata": "<ASCII armored PGP message>"
+        "encryptedContent": "<ASCII armored PGP message>",
     }],
 
 }
