@@ -3,7 +3,10 @@ package datastore
 import (
 	"database/sql"
 	"fmt"
+	"github.com/fluidkeys/fluidkeys/fingerprint"
+	"github.com/gofrs/uuid"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -59,4 +62,40 @@ func GetArmoredPublicKeyForEmail(email string) (armoredPublicKey string, found b
 	}
 
 	return armoredPublicKey, true, nil
+}
+
+// CreateSecret stores the armoredEncryptedSecret (which must be encrypted to
+// the given `recipientFingerprint`) against the recipient public key.
+func CreateSecret(recipientFingerprint fingerprint.Fingerprint, armoredEncryptedSecret string, now time.Time) error {
+	secretUUID, err := uuid.NewV4()
+	if err != nil {
+		return err
+	}
+
+	createdAt := now
+
+	dbFingerprint := fmt.Sprintf("4:%s", recipientFingerprint.Hex())
+
+	query := `INSERT INTO secrets(
+                      recipient_key_id,
+                      uuid,
+                      created_at,
+                      armored_encrypted_secret)
+                  VALUES (
+                      (SELECT id FROM keys WHERE fingerprint=$1),
+                      $2,
+                      $3,
+                      $4)`
+
+	_, err = db.Exec(
+		query,
+		dbFingerprint,
+		secretUUID,
+		createdAt,
+		armoredEncryptedSecret,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }
