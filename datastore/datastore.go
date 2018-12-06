@@ -105,12 +105,34 @@ func GetArmoredPublicKeyForFingerprint(fingerprint fpr.Fingerprint) (armoredPubl
 	return armoredPublicKey, true, nil
 }
 
+func getKeyIdForFingerprint(fingerprint fpr.Fingerprint) (keyId int64, found bool, err error) {
+	query := `SELECT keys.id FROM keys WHERE fingerprint=$1`
+
+	err = db.QueryRow(query, dbFormat(fingerprint)).Scan(&keyId)
+	if err == sql.ErrNoRows {
+		return 0, false, nil // return found=false without an error
+
+	} else if err != nil {
+		return 0, false, err
+	}
+
+	return keyId, true, nil
+}
+
 // CreateSecret stores the armoredEncryptedSecret (which must be encrypted to
 // the given `recipientFingerprint`) against the recipient public key.
 func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret string, now time.Time) error {
 	secretUUID, err := uuid.NewV4()
 	if err != nil {
 		return err
+	}
+
+	keyId, found, err := getKeyIdForFingerprint(recipientFingerprint)
+
+	if err != nil {
+		return err
+	} else if !found {
+		return fmt.Errorf("no key found for fingerprint")
 	}
 
 	createdAt := now
@@ -121,14 +143,14 @@ func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret s
                       created_at,
                       armored_encrypted_secret)
                   VALUES (
-                      (SELECT id FROM keys WHERE fingerprint=$1),
+                      $1,
                       $2,
                       $3,
                       $4)`
 
 	_, err = db.Exec(
 		query,
-		dbFormat(recipientFingerprint),
+		keyId,
 		secretUUID,
 		createdAt,
 		armoredEncryptedSecret,
