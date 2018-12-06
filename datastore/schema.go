@@ -31,4 +31,7 @@ var migrateDatabaseStatements = []string{
                 recipient_key_id INT NOT NULL REFERENCES keys(id) ON DELETE CASCADE,
                 armored_encrypted_secret TEXT NOT NULL
     )`,
+
+	// allow multiple key_id in email_key_link (many email -> 1 key)
+	`ALTER TABLE email_key_link DROP CONSTRAINT IF EXISTS email_key_link_key_id_key`,
 }

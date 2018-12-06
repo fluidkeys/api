@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/v1structs"
+	"github.com/fluidkeys/fluidkeys/assert"
+	"github.com/fluidkeys/fluidkeys/exampledata"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -51,20 +53,41 @@ func TestPingEndpoint(t *testing.T) {
 }
 
 func TestGetPublicKeyHandler(t *testing.T) {
+	assert.ErrorIsNil(t,
+		datastore.UpsertPublicKey(exampledata.ExamplePublicKey4),
+	)
+	assert.ErrorIsNil(t,
+		datastore.LinkEmailToFingerprint("test4@example.com", exampledata.ExampleFingerprint4),
+	)
+	assert.ErrorIsNil(t,
+		datastore.LinkEmailToFingerprint("test4+foo@example.com", exampledata.ExampleFingerprint4),
+	)
 
 	t.Run("with no match on email", func(t *testing.T) {
 		response := callApi(t, "GET", "/v1/email/missing@example.com/key")
 
 		assertStatusCode(t, http.StatusNotFound, response.Code)
-		assertHasJsonErrorDetail(t, response.Body, "couldn't find a public key for email address 'missing@example.com'")
+		assertHasJsonErrorDetail(t, response.Body,
+			"couldn't find a public key for email address 'missing@example.com'")
 	})
 
 	t.Run("with match on email", func(t *testing.T) {
-		// TODO
+		response := callApi(t, "GET", "/v1/email/test4@example.com/key")
+		assertStatusCode(t, http.StatusOK, response.Code)
+
+		responseData := v1structs.GetPublicKeyResponse{}
+		assertBodyDecodesInto(t, response.Body, &responseData)
+		assert.Equal(t, responseData.ArmoredPublicKey, exampledata.ExamplePublicKey4)
 	})
 
-	t.Run("with + in email address", func(t *testing.T) {
-		// TODO
+	t.Run("with + in email, request not urlencoded", func(t *testing.T) {
+		response := callApi(t, "GET", "/v1/email/test4+foo@example.com/key")
+		assertStatusCode(t, http.StatusOK, response.Code)
+	})
+
+	t.Run("with + in email, request urlencoded", func(t *testing.T) {
+		response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
+		assertStatusCode(t, http.StatusOK, response.Code)
 	})
 }
 
@@ -95,5 +118,11 @@ func assertHasJsonErrorDetail(t *testing.T, body io.Reader, expectedDetail strin
 		t.Fatalf("failed to decode body as JSON: %v", err)
 	} else if errorResponse.Detail != expectedDetail {
 		t.Fatalf("expected error detail '%s', got '%s'", expectedDetail, errorResponse.Detail)
+	}
+}
+
+func assertBodyDecodesInto(t *testing.T, body io.Reader, responseStruct interface{}) {
+	if err := json.NewDecoder(body).Decode(&responseStruct); err != nil {
+		t.Fatalf("failed to decode body as JSON: %v", err)
 	}
 }

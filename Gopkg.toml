@@ -36,3 +36,11 @@
 [[constraint]]
   name = "github.com/lib/pq"
   version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/fluidkeys/fluidkeys"
+  # use the latest fluidkeys/fluidkeys rather than tagged releases since we're
+  # currently developing a lot of shared code in that repo
+  # To update from the latest master, run:
+  # > dep ensure -update github.com/fluidkeys/fluidkeys
+  branch = "master"

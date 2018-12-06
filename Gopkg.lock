@@ -17,9 +17,12 @@
   revision = "2018-09-13"
 
 [[projects]]
-  digest = "1:6f5133f99813d270fefca08f629be566d79a2d545349f5c31a3aebcbfce82da3"
+  branch = "master"
+  digest = "1:5dfc68592002e4197766cf3fe8ee6edd5e00493397eddee791da94931465664c"
   name = "github.com/fluidkeys/fluidkeys"
   packages = [
+    "assert",
+    "exampledata",
     "fingerprint",
     "openpgpdefs/compression",
     "openpgpdefs/hash",
@@ -28,8 +31,7 @@
     "policy",
   ]
   pruneopts = "UT"
-  revision = "bf08b13defba21e7aacdb98dfd7f9d814f1a1fc9"
-  version = "v0.2.5"
+  revision = "ab4bdbb1824c349a861e3a61709b279796f655ac"
 
 [[projects]]
   digest = "1:c594a691090b434d55c67f6cc8e326ef5ba49452abc059821bd5d4fd4cdef08c"
@@ -70,6 +72,10 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/fluidkeys/crypto/openpgp",
+    "github.com/fluidkeys/crypto/openpgp/armor",
+    "github.com/fluidkeys/fluidkeys/assert",
+    "github.com/fluidkeys/fluidkeys/exampledata",
     "github.com/fluidkeys/fluidkeys/fingerprint",
     "github.com/fluidkeys/fluidkeys/pgpkey",
     "github.com/gofrs/uuid",
