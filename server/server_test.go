@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/fluidkeys/api/datastore"
@@ -38,7 +39,7 @@ func TestMain(m *testing.M) {
 
 func TestPingEndpoint(t *testing.T) {
 	t.Run("test ping endpoint", func(t *testing.T) {
-		mockResponse := callApi(t, "GET", "/v1/ping/foo")
+		mockResponse := callApi(t, "GET", "/v1/ping/foo", nil)
 
 		assertStatusCode(t, http.StatusOK, mockResponse.Code)
 
@@ -64,7 +65,7 @@ func TestGetPublicKeyHandler(t *testing.T) {
 	)
 
 	t.Run("with no match on email", func(t *testing.T) {
-		response := callApi(t, "GET", "/v1/email/missing@example.com/key")
+		response := callApi(t, "GET", "/v1/email/missing@example.com/key", nil)
 
 		assertStatusCode(t, http.StatusNotFound, response.Code)
 		assertHasJsonErrorDetail(t, response.Body,
@@ -72,7 +73,7 @@ func TestGetPublicKeyHandler(t *testing.T) {
 	})
 
 	t.Run("with match on email", func(t *testing.T) {
-		response := callApi(t, "GET", "/v1/email/test4@example.com/key")
+		response := callApi(t, "GET", "/v1/email/test4@example.com/key", nil)
 		assertStatusCode(t, http.StatusOK, response.Code)
 
 		responseData := v1structs.GetPublicKeyResponse{}
@@ -81,21 +82,32 @@ func TestGetPublicKeyHandler(t *testing.T) {
 	})
 
 	t.Run("with + in email, request not urlencoded", func(t *testing.T) {
-		response := callApi(t, "GET", "/v1/email/test4+foo@example.com/key")
+		response := callApi(t, "GET", "/v1/email/test4+foo@example.com/key", nil)
 		assertStatusCode(t, http.StatusOK, response.Code)
 	})
 
 	t.Run("with + in email, request urlencoded", func(t *testing.T) {
-		response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
+		response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key", nil)
 		assertStatusCode(t, http.StatusOK, response.Code)
 	})
 }
 
-func callApi(t *testing.T, method string, path string) *httptest.ResponseRecorder {
+func callApi(t *testing.T, method string, path string, requestData interface{}) *httptest.ResponseRecorder {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	t.Helper()
-	req, err := http.NewRequest(method, path, nil)
+
+	var body io.ReadWriter
+	if requestData != nil {
+		body = new(bytes.Buffer)
+		encoder := json.NewEncoder(body)
+		err := encoder.Encode(requestData)
+		if err != nil {
+			t.Fatalf("failed to encode requestData as JSON: %v", err)
+		}
+	}
+
+	req, err := http.NewRequest(method, path, body)
 	if err != nil {
 		t.Fatal(err)
 	}
