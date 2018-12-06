@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
+	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/gofrs/uuid"
 	"os"
 	"time"
@@ -28,6 +29,40 @@ func Initialize(databaseUrl string) error {
 
 func Ping() error {
 	return db.Ping()
+}
+
+// UpsertPublicKey either inserts or updates a public key based on the
+// fingerprint. For updates, any foreign key relationships are maintained.
+func UpsertPublicKey(armoredPublicKey string) error {
+	key, err := pgpkey.LoadFromArmoredPublicKey(armoredPublicKey)
+	if err != nil {
+		return fmt.Errorf("error loading armored key: %v", err)
+	}
+
+	fingerprint := key.Fingerprint()
+
+	query := `INSERT INTO keys (fingerprint, armored_public_key)
+	          VALUES ($1, $2)
+		  ON CONFLICT (fingerprint) DO UPDATE
+		      SET armored_public_key=EXCLUDED.armored_public_key`
+
+	_, err = db.Exec(query, dbFormat(fingerprint), armoredPublicKey)
+
+	return err
+}
+
+// LinkEmailToFingerprint records that the given public key should be returned
+// when queried for the given email address.
+// If there is no public key in the database matching the fingerprint, an
+// error will be returned.
+func LinkEmailToFingerprint(email string, fingerprint fpr.Fingerprint) error {
+	query := `INSERT INTO email_key_link (email, key_id)
+	          VALUES($1, (SELECT id FROM keys WHERE fingerprint=$2))
+		  ON CONFLICT(email) DO UPDATE
+		      SET key_id=EXCLUDED.key_id`
+
+	_, err := db.Exec(query, email, dbFormat(fingerprint))
+	return err
 }
 
 func GetArmoredPublicKeyForEmail(email string) (armoredPublicKey string, found bool, err error) {
