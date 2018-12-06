@@ -18,9 +18,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:fad4796754352989d1112a18b2a6e8660bbdde8e7b48b27f8603cd53c52cf9a2"
+  digest = "1:5dfc68592002e4197766cf3fe8ee6edd5e00493397eddee791da94931465664c"
   name = "github.com/fluidkeys/fluidkeys"
   packages = [
+    "assert",
     "exampledata",
     "fingerprint",
     "openpgpdefs/compression",
@@ -73,6 +74,7 @@
   input-imports = [
     "github.com/fluidkeys/crypto/openpgp",
     "github.com/fluidkeys/crypto/openpgp/armor",
+    "github.com/fluidkeys/fluidkeys/assert",
     "github.com/fluidkeys/fluidkeys/exampledata",
     "github.com/fluidkeys/fluidkeys/fingerprint",
     "github.com/fluidkeys/fluidkeys/pgpkey",
