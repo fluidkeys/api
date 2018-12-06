@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/v1structs"
+	"github.com/fluidkeys/crypto/openpgp/armor"
+	"github.com/fluidkeys/crypto/openpgp/packet"
 	"github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/gofrs/uuid"
@@ -15,35 +17,45 @@ import (
 )
 
 func sendSecretHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		writeJsonError(w,
+			fmt.Errorf("expecting header Content-Type: application/json"),
+			http.StatusBadRequest)
+		return
+	}
+
+	if r.Body == nil {
+		writeJsonError(w, fmt.Errorf("empty request body"), http.StatusBadRequest)
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	requestData := v1structs.SendSecretRequest{}
 	err := decoder.Decode(&requestData)
 	if err != nil {
-		writeJsonError(w, err, http.StatusBadRequest)
+		writeJsonError(w, fmt.Errorf("invalid JSON: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	fpr, err := parseFingerprint(requestData.RecipientFingerprint)
+	recipientFingerprint, err := parseFingerprint(requestData.RecipientFingerprint)
 	if err != nil {
-		writeJsonError(
-			w,
+		writeJsonError(w,
 			fmt.Errorf("invalid `recipientFingerprint`: %v", err),
 			http.StatusBadRequest,
 		)
 		return
 	}
 
-	err = validateSecret(requestData.ArmoredEncryptedSecret)
+	err = validateSecret(requestData.ArmoredEncryptedSecret, *recipientFingerprint)
 	if err != nil {
-		writeJsonError(
-			w,
+		writeJsonError(w,
 			fmt.Errorf("invalid `armoredEncryptedSecret`: %v", err),
 			http.StatusBadRequest,
 		)
 		return
 	}
 
-	err = datastore.CreateSecret(*fpr, requestData.ArmoredEncryptedSecret, time.Now())
+	err = datastore.CreateSecret(*recipientFingerprint, requestData.ArmoredEncryptedSecret, time.Now())
 	if err != nil {
 		writeJsonError(w, err, http.StatusBadRequest)
 		return
@@ -157,8 +169,40 @@ func parseFingerprint(fp string) (*fingerprint.Fingerprint, error) {
 	return &fpr, err
 }
 
-func validateSecret(armoredEncryptedSecret string) error {
-	return nil // TODO
+func validateSecret(armoredEncryptedSecret string, recipientFingerprint fingerprint.Fingerprint) error {
+	if armoredEncryptedSecret == "" {
+		return fmt.Errorf("empty string")
+	}
+
+	block, err := armor.Decode(strings.NewReader(armoredEncryptedSecret))
+	if err != nil {
+		return fmt.Errorf("error decoding ASCII armor: %s", err)
+	}
+
+	if len(armoredEncryptedSecret) > 10*1024 {
+		return fmt.Errorf("secrets currently have a max size of 10K")
+	}
+
+	pkt1, err := packet.Read(block.Body)
+	if err != nil {
+		return fmt.Errorf("error reading Public-Key Encrypted Session Key Packet (tag 1): %v", err)
+	} else if _, ok := pkt1.(*packet.EncryptedKey); !ok {
+		return fmt.Errorf("message did not start with Public-Key Encrypted Session Key Packet (tag 1)")
+	}
+
+	pkt2, err := packet.Read(block.Body)
+	if err != nil {
+		return fmt.Errorf(
+			"error reading Symmetrically Encrypted Integrity "+
+				"Protected Data Packet (tag 18): %v", err)
+	} else if _, ok := pkt2.(*packet.SymmetricallyEncrypted); !ok {
+		return fmt.Errorf(
+			"second packet was not Sym. Encrypted Integrity " +
+				"Protected Data Packet (tag 18")
+	}
+
+	// TODO: test there are no additional packets
+	return nil
 }
 
 func deleteSecretHandler(w http.ResponseWriter, r *http.Request) {
