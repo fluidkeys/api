@@ -102,14 +102,24 @@ func TestSendSecretHandler(t *testing.T) {
 
 	otherKey, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey3)
 	assert.ErrorIsNil(t, err)
-
-	// put `key` and `otherKey` in the datastore, but not `unknownFingerprint`
-	datastore.UpsertPublicKey(exampledata.ExamplePublicKey4)
-	datastore.UpsertPublicKey(exampledata.ExamplePublicKey3)
-
 	unknownFingerprint := fingerprint.MustParse("AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB")
 
 	validEncryptedArmoredSecret, err := encryptStringToArmor("test foo", key)
+
+	setup := func() {
+		// put `key` and `otherKey` in the datastore, but not `unknownFingerprint`
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey4))
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey3))
+	}
+	teardown := func() {
+		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.ErrorIsNil(t, err)
+
+		_, err = datastore.DeletePublicKey(exampledata.ExampleFingerprint3)
+		assert.ErrorIsNil(t, err)
+	}
+
+	setup()
 
 	t.Run("good recipient and ascii armor", func(t *testing.T) {
 		requestData := v1structs.SendSecretRequest{
@@ -275,6 +285,8 @@ func TestSendSecretHandler(t *testing.T) {
 		assertHasJsonErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: secrets currently have a max size of 10K")
 	})
+
+	teardown()
 
 }
 

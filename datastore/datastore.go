@@ -51,6 +51,32 @@ func UpsertPublicKey(armoredPublicKey string) error {
 	return err
 }
 
+// DeletePublicKey deletes a key by its fingerprint, returning found=true if
+// a matching key was found and deleted.
+// Note that any linked emails and stored secrets will also be deleted.
+// If there was no matching key (e.g. it was already deleted), found is false
+// and error is nil.
+// An error is returned only if something failed e.g. a database error.
+func DeletePublicKey(fingerprint fpr.Fingerprint) (found bool, err error) {
+	query := `DELETE FROM keys WHERE keys.fingerprint=$1`
+
+	result, err := db.Exec(query, dbFormat(fingerprint))
+	if err != nil {
+		return false, err
+	}
+
+	numRowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	if numRowsAffected < 1 {
+		return false, nil // not found (but no error)
+	}
+
+	return true, nil // found and deleted
+}
+
 // LinkEmailToFingerprint records that the given public key should be returned
 // when queried for the given email address.
 // If there is no public key in the database matching the fingerprint, an
