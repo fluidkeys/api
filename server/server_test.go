@@ -6,16 +6,20 @@ import (
 	"fmt"
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/v1structs"
+	"github.com/fluidkeys/crypto/openpgp"
+	"github.com/fluidkeys/crypto/openpgp/armor"
 	"github.com/fluidkeys/fluidkeys/assert"
 	"github.com/fluidkeys/fluidkeys/exampledata"
 	"github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
+	"github.com/gofrs/uuid"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestMain(m *testing.M) {
@@ -290,6 +294,160 @@ func TestSendSecretHandler(t *testing.T) {
 
 }
 
+func TestListSecretsHandler(t *testing.T) {
+	key, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey4)
+	assert.ErrorIsNil(t, err)
+
+	// otherKey, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey3)
+	assert.ErrorIsNil(t, err)
+	unknownFingerprint := fingerprint.MustParse("AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB")
+
+	validEncryptedArmoredSecret, err := encryptStringToArmor("test foo", key)
+
+	var secretUUID *uuid.UUID
+
+	setup := func() {
+		now := time.Date(2018, 6, 5, 16, 30, 5, 0, time.UTC)
+		// put `key` and `otherKey` in the datastore, but not `unknownFingerprint`
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey4))
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey3))
+		secretUUID, err = datastore.CreateSecret(
+			exampledata.ExampleFingerprint4, validEncryptedArmoredSecret, now)
+		assert.ErrorIsNil(t, err)
+	}
+	teardown := func() {
+		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.ErrorIsNil(t, err)
+
+		_, err = datastore.DeletePublicKey(exampledata.ExampleFingerprint3)
+		assert.ErrorIsNil(t, err)
+
+		_, err = datastore.DeleteSecret(*secretUUID, exampledata.ExampleFingerprint4)
+		assert.ErrorIsNil(t, err)
+	}
+
+	setup()
+
+	t.Run("without authorization header", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/v1/secrets", nil)
+		assert.ErrorIsNil(t, err)
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusUnauthorized, response.Code)
+		assertHasJsonErrorDetail(t, response.Body,
+			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
+	})
+
+	t.Run("malformed authorization header", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/v1/secrets", nil)
+		assert.ErrorIsNil(t, err)
+		req.Header.Set("Authorization", "invalid")
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusUnauthorized, response.Code)
+		assertHasJsonErrorDetail(t, response.Body,
+			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
+	})
+
+	t.Run("no matching public key", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/v1/secrets", nil)
+		assert.ErrorIsNil(t, err)
+		req.Header.Set(
+			"Authorization",
+			fmt.Sprintf("tmpfingerprint: %s", unknownFingerprint.Uri()),
+		)
+
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusUnauthorized, response.Code)
+		assertHasJsonErrorDetail(t, response.Body, "invalid authorization")
+	})
+
+	t.Run("valid request with no secrets", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/v1/secrets", nil)
+		assert.ErrorIsNil(t, err)
+		req.Header.Set(
+			"Authorization",
+			fmt.Sprintf("tmpfingerprint: %s", exampledata.ExampleFingerprint3.Uri()),
+		)
+
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusOK, response.Code)
+
+		responseData := v1structs.ListSecretsResponse{}
+		err = json.NewDecoder(response.Body).Decode(&responseData)
+		assert.ErrorIsNil(t, err)
+		assert.Equal(t, 0, len(responseData.Secrets))
+	})
+
+	t.Run("valid request with 1 secret", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/v1/secrets", nil)
+		assert.ErrorIsNil(t, err)
+		req.Header.Set(
+			"Authorization",
+			fmt.Sprintf("tmpfingerprint: %s", exampledata.ExampleFingerprint4.Uri()),
+		)
+
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+		responseData := v1structs.ListSecretsResponse{}
+
+		t.Run("returns http 200", func(t *testing.T) {
+			assertStatusCode(t, http.StatusOK, response.Code)
+		})
+
+		t.Run("returns expected JSON", func(t *testing.T) {
+			if response.Body == nil {
+				t.Fatal("response has nil Body")
+			}
+			err := json.NewDecoder(response.Body).Decode(&responseData)
+			assert.ErrorIsNil(t, err)
+		})
+
+		t.Run("JSON has one secret", func(t *testing.T) {
+			assert.Equal(t, 1, len(responseData.Secrets))
+		})
+
+		t.Run("encryptedContent is unaltered", func(t *testing.T) {
+			assert.Equal(t, validEncryptedArmoredSecret, responseData.Secrets[0].EncryptedContent)
+		})
+
+		t.Run("encryptedMetadata can be decrypted", func(t *testing.T) {
+			privateKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(
+				exampledata.ExamplePrivateKey4, "test4")
+			assert.ErrorIsNil(t, err)
+			msg, err := decryptMessage(
+				responseData.Secrets[0].EncryptedMetadata, privateKey)
+			assert.ErrorIsNil(t, err)
+
+			t.Run("metadata has correct secret UUID", func(t *testing.T) {
+				metadata := v1structs.SecretMetadata{}
+				err := json.NewDecoder(msg).Decode(&metadata)
+				assert.ErrorIsNil(t, err)
+
+				gotUUID, err := uuid.FromString(metadata.SecretUUID)
+				if err != nil {
+					t.Fatalf("failed to parse secretUUID '%s' as UUID", metadata.SecretUUID)
+				} else if gotUUID.Version() != uuid.V4 {
+					t.Fatalf("expected UUID version 4, got %v", secretUUID.Version())
+				} else if *secretUUID != gotUUID {
+					t.Fatalf("decrypted secret UUID didn't match, expected %v, got %v",
+						secretUUID, metadata.SecretUUID)
+				}
+			})
+		})
+
+	})
+
+	teardown()
+
+}
+
 func callApi(t *testing.T, method string, path string) *httptest.ResponseRecorder {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
@@ -359,4 +517,29 @@ func assertBodyDecodesInto(t *testing.T, body io.Reader, responseStruct interfac
 	if err := json.NewDecoder(body).Decode(&responseStruct); err != nil {
 		t.Fatalf("failed to decode body as JSON: %v", err)
 	}
+}
+
+func decryptMessage(armoredEncryptedSecret string, key *pgpkey.PgpKey) (io.Reader, error) {
+	block, err := armor.Decode(strings.NewReader(armoredEncryptedSecret))
+	if err != nil {
+		return nil, fmt.Errorf("error decoding armor: %s", err)
+	}
+
+	var keyRing openpgp.EntityList = []*openpgp.Entity{&key.Entity}
+
+	messageDetails, err := openpgp.ReadMessage(block.Body, keyRing, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error rereading message: %s", err)
+	}
+
+	decryptedBuf := bytes.NewBuffer(nil)
+	_, err = io.Copy(decryptedBuf, messageDetails.UnverifiedBody)
+	if err != nil {
+		return nil, fmt.Errorf("error rereading message: %s", err)
+	}
+
+	if messageDetails.SignatureError != nil {
+		return nil, fmt.Errorf("signature error: %v", err)
+	}
+	return decryptedBuf, nil
 }
