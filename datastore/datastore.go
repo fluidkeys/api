@@ -147,18 +147,18 @@ func getKeyIdForFingerprint(fingerprint fpr.Fingerprint) (keyId int64, found boo
 
 // CreateSecret stores the armoredEncryptedSecret (which must be encrypted to
 // the given `recipientFingerprint`) against the recipient public key.
-func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret string, now time.Time) error {
+func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret string, now time.Time) (*uuid.UUID, error) {
 	secretUUID, err := uuid.NewV4()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	keyId, found, err := getKeyIdForFingerprint(recipientFingerprint)
 
 	if err != nil {
-		return err
+		return nil, err
 	} else if !found {
-		return fmt.Errorf("no key found for fingerprint")
+		return nil, fmt.Errorf("no key found for fingerprint")
 	}
 
 	createdAt := now
@@ -182,9 +182,9 @@ func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret s
 		armoredEncryptedSecret,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return &secretUUID, nil
 }
 
 func GetSecrets(recipientFingerprint fpr.Fingerprint) ([]*secret, error) {

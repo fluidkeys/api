@@ -55,7 +55,7 @@ func sendSecretHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = datastore.CreateSecret(*recipientFingerprint, requestData.ArmoredEncryptedSecret, time.Now())
+	_, err = datastore.CreateSecret(*recipientFingerprint, requestData.ArmoredEncryptedSecret, time.Now())
 	if err != nil {
 		writeJsonError(w, err, http.StatusBadRequest)
 		return
