@@ -108,12 +108,15 @@ func TestSendSecretHandler(t *testing.T) {
 
 	setup := func() {
 		// put `key` and `otherKey` in the datastore, but not `unknownFingerprint`
-		datastore.UpsertPublicKey(exampledata.ExamplePublicKey4)
-		datastore.UpsertPublicKey(exampledata.ExamplePublicKey3)
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey4))
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey3))
 	}
 	teardown := func() {
-		datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
-		datastore.DeletePublicKey(exampledata.ExampleFingerprint3)
+		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.ErrorIsNil(t, err)
+
+		_, err = datastore.DeletePublicKey(exampledata.ExampleFingerprint3)
+		assert.ErrorIsNil(t, err)
 	}
 
 	setup()
