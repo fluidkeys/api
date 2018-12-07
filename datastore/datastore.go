@@ -168,11 +168,7 @@ func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret s
                       uuid,
                       created_at,
                       armored_encrypted_secret)
-                  VALUES (
-                      $1,
-                      $2,
-                      $3,
-                      $4)`
+                  VALUES ($1, $2, $3, $4)`
 
 	_, err = db.Exec(
 		query,
