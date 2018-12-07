@@ -55,7 +55,7 @@ func sendSecretHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = datastore.CreateSecret(*recipientFingerprint, requestData.ArmoredEncryptedSecret, time.Now())
+	_, err = datastore.CreateSecret(*recipientFingerprint, requestData.ArmoredEncryptedSecret, time.Now())
 	if err != nil {
 		writeJsonError(w, err, http.StatusBadRequest)
 		return
@@ -69,7 +69,7 @@ func listSecretsHandler(w http.ResponseWriter, r *http.Request) {
 	myPublicKey, err := getAuthorizedUserPublicKey(r)
 
 	if err != nil {
-		writeJsonError(w, err, http.StatusBadRequest)
+		writeJsonError(w, err, http.StatusUnauthorized)
 		return
 	}
 
@@ -148,7 +148,7 @@ func getAuthorizedUserPublicKey(r *http.Request) (*pgpkey.PgpKey, error) {
 	if err != nil {
 		return nil, err
 	} else if !found {
-		return nil, fmt.Errorf("no public key found for %s", fpr)
+		return nil, fmt.Errorf("invalid authorization")
 	}
 
 	key, err := pgpkey.LoadFromArmoredPublicKey(armoredPublicKey)
