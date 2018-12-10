@@ -238,6 +238,29 @@ func DeleteSecret(secretUUID uuid.UUID, recipientFingerprint fpr.Fingerprint) (f
 	return true, nil // found and deleted
 }
 
+func VerifySingleUseNumberNotStored(singleUseUUID uuid.UUID) error {
+	query := `SELECT COUNT(uuid) FROM single_use_uuids WHERE uuid=$1`
+
+	var count int
+	err := db.QueryRow(query, singleUseUUID).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count > 0 {
+		return fmt.Errorf("single use UUID %s already used", singleUseUUID)
+	}
+
+	return nil
+}
+
+func StoreSingleUseNumber(singleUseUUID uuid.UUID, now time.Time) error {
+	query := `INSERT INTO single_use_uuids (uuid, created_at)
+	          VALUES ($1, $2)`
+	_, err := db.Exec(query, singleUseUUID, now)
+	return err
+}
+
 func MustReadDatabaseUrl() string {
 	databaseUrl, present := os.LookupEnv("DATABASE_URL")
 
