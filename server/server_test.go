@@ -669,28 +669,6 @@ func decryptMessage(armoredEncryptedSecret string, key *pgpkey.PgpKey) (io.Reade
 	return decryptedBuf, nil
 }
 
-func sign(bytesToSign []byte, key *pgpkey.PgpKey) (armoredSigned string, err error) {
-	armorOutBuffer := bytes.NewBuffer(nil)
-	armorWriteCloser, err := armor.Encode(armorOutBuffer, "PGP SIGNED MESSAGE", nil)
-	if err != nil {
-		return "", err
-	}
-
-	signWriteCloser, err := openpgp.Sign(armorWriteCloser, &key.Entity, nil, nil)
-	if err != nil {
-		return "", err
-	}
-
-	_, err = signWriteCloser.Write(bytesToSign)
-	if err != nil {
-		return "", err
-	}
-
-	signWriteCloser.Close()
-	armorWriteCloser.Close()
-	return armorOutBuffer.String(), nil
-}
-
 func signText(bytesToSign []byte, key *pgpkey.PgpKey) (armoredSigned string, err error) {
 	armorOutBuffer := bytes.NewBuffer(nil)
 	privKey := key.Entity.PrivateKey
