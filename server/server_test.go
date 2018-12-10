@@ -2,12 +2,14 @@ package server
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/v1structs"
 	"github.com/fluidkeys/crypto/openpgp"
 	"github.com/fluidkeys/crypto/openpgp/armor"
+	"github.com/fluidkeys/crypto/openpgp/clearsign"
 	"github.com/fluidkeys/fluidkeys/assert"
 	"github.com/fluidkeys/fluidkeys/exampledata"
 	"github.com/fluidkeys/fluidkeys/fingerprint"
@@ -97,6 +99,50 @@ func TestGetPublicKeyHandler(t *testing.T) {
 		response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
 		assertStatusCode(t, http.StatusOK, response.Code)
 	})
+}
+
+func TestUpsertPublicKeyHandler(t *testing.T) {
+	unlockedKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(exampledata.ExamplePrivateKey4, "test4")
+	assert.ErrorIsNil(t, err)
+
+	setup := func() {
+
+	}
+
+	teardown := func() {
+		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.ErrorIsNil(t, err)
+	}
+
+	setup()
+
+	// TODO: content header tests etc
+
+	t.Run("valid signed data, brand new key", func(t *testing.T) {
+
+		upsertPublicKeyJSON := new(bytes.Buffer)
+
+		err := json.NewEncoder(upsertPublicKeyJSON).Encode(
+			v1structs.UpsertPublicKeySignedData{
+				Timestamp:       time.Now(),
+				SingleUseUUID:   uuid.Must(uuid.NewV4()).String(),
+				PublicKeySHA256: fmt.Sprintf("%X", sha256.Sum256([]byte(exampledata.ExamplePublicKey4))),
+			})
+		assert.ErrorIsNil(t, err)
+
+		requestData := v1structs.UpsertPublicKeyRequest{
+			ArmoredPublicKey: exampledata.ExamplePublicKey4,
+		}
+
+		requestData.ArmoredSignedJSON, err = signText(upsertPublicKeyJSON.Bytes(), unlockedKey)
+		assert.ErrorIsNil(t, err)
+
+		response := callApiWithJson(t, "POST", "/v1/keys", requestData)
+		assertStatusCode(t, http.StatusOK, response.Code)
+		fmt.Print(response.Body)
+	})
+
+	teardown()
 }
 
 func TestSendSecretHandler(t *testing.T) {
@@ -542,4 +588,44 @@ func decryptMessage(armoredEncryptedSecret string, key *pgpkey.PgpKey) (io.Reade
 		return nil, fmt.Errorf("signature error: %v", err)
 	}
 	return decryptedBuf, nil
+}
+
+func sign(bytesToSign []byte, key *pgpkey.PgpKey) (armoredSigned string, err error) {
+	armorOutBuffer := bytes.NewBuffer(nil)
+	armorWriteCloser, err := armor.Encode(armorOutBuffer, "PGP SIGNED MESSAGE", nil)
+	if err != nil {
+		return "", err
+	}
+
+	signWriteCloser, err := openpgp.Sign(armorWriteCloser, &key.Entity, nil, nil)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = signWriteCloser.Write(bytesToSign)
+	if err != nil {
+		return "", err
+	}
+
+	signWriteCloser.Close()
+	armorWriteCloser.Close()
+	return armorOutBuffer.String(), nil
+}
+
+func signText(bytesToSign []byte, key *pgpkey.PgpKey) (armoredSigned string, err error) {
+	armorOutBuffer := bytes.NewBuffer(nil)
+	privKey := key.Entity.PrivateKey
+
+	armorWriteCloser, err := clearsign.Encode(armorOutBuffer, privKey, nil)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = armorWriteCloser.Write(bytesToSign)
+	if err != nil {
+		return "", err
+	}
+
+	armorWriteCloser.Close()
+	return armorOutBuffer.String(), nil
 }
