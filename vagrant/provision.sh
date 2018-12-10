@@ -71,6 +71,10 @@ install_realize_go_package() {
     run_as_vagrant "go get github.com/oxequa/realize"
 }
 
+install_richgo_colour_test_output_go_package() {
+    run_as_vagrant "go get -u github.com/kyoh86/richgo"
+}
+
 create_postgresql_database_and_user() {
     # We make a user and a database both called vagrant, then the vagrant
     # username will automatically access that database.
@@ -103,6 +107,7 @@ install_postgresql_10
 install_golang_1_10_5
 create_postgresql_database_and_user
 install_realize_go_package
+install_richgo_colour_test_output_go_package
 migrate_database
 
 set +x
