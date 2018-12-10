@@ -17,23 +17,10 @@ import (
 )
 
 func sendSecretHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		writeJsonError(w,
-			fmt.Errorf("expecting header Content-Type: application/json"),
-			http.StatusBadRequest)
-		return
-	}
-
-	if r.Body == nil {
-		writeJsonError(w, fmt.Errorf("empty request body"), http.StatusBadRequest)
-		return
-	}
-
-	decoder := json.NewDecoder(r.Body)
 	requestData := v1structs.SendSecretRequest{}
-	err := decoder.Decode(&requestData)
-	if err != nil {
-		writeJsonError(w, fmt.Errorf("invalid JSON: %v", err), http.StatusBadRequest)
+
+	if err := decodeJsonRequest(r, &requestData); err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
 		return
 	}
 

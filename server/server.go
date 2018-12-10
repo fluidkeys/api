@@ -17,7 +17,10 @@ func init() {
 	subrouter = r.PathPrefix("/v1").Subrouter()
 
 	subrouter.HandleFunc("/ping/{word}", pingHandler).Methods("GET")
+
 	subrouter.HandleFunc("/email/{email}/key", getPublicKeyHandler).Methods("GET")
+	subrouter.HandleFunc("/keys", upsertPublicKeyHandler).Methods("POST")
+
 	subrouter.HandleFunc("/secrets", sendSecretHandler).Methods("POST")
 	subrouter.HandleFunc("/secrets", listSecretsHandler).Methods("GET")
 	subrouter.HandleFunc("/secrets/{uuid:"+uuid4Pattern+"}", deleteSecretHandler).Methods("DELETE")

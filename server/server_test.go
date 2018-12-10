@@ -2,12 +2,14 @@ package server
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/v1structs"
 	"github.com/fluidkeys/crypto/openpgp"
 	"github.com/fluidkeys/crypto/openpgp/armor"
+	"github.com/fluidkeys/crypto/openpgp/clearsign"
 	"github.com/fluidkeys/fluidkeys/assert"
 	"github.com/fluidkeys/fluidkeys/exampledata"
 	"github.com/fluidkeys/fluidkeys/fingerprint"
@@ -97,6 +99,129 @@ func TestGetPublicKeyHandler(t *testing.T) {
 		response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
 		assertStatusCode(t, http.StatusOK, response.Code)
 	})
+}
+
+func TestUpsertPublicKeyHandler(t *testing.T) {
+	armoredPublicKey := exampledata.ExamplePublicKey4
+	validSha256 := fmt.Sprintf("%X", sha256.Sum256([]byte(exampledata.ExamplePublicKey4)))
+	publicKey, err := pgpkey.LoadFromArmoredPublicKey(armoredPublicKey)
+	assert.ErrorIsNil(t, err)
+
+	unlockedKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(exampledata.ExamplePrivateKey4, "test4")
+	assert.ErrorIsNil(t, err)
+
+	uuid1 := uuid.Must(uuid.NewV4())
+	now := time.Date(2018, 6, 15, 16, 30, 0, 0, time.UTC)
+
+	setup := func() {
+
+	}
+
+	teardown := func() {
+		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.ErrorIsNil(t, err)
+	}
+
+	makeSignedData := func(t *testing.T, timestamp time.Time, uuidString string, sha256 string) string {
+		t.Helper()
+		upsertPublicKeyJSON := new(bytes.Buffer)
+
+		err := json.NewEncoder(upsertPublicKeyJSON).Encode(
+			v1structs.UpsertPublicKeySignedData{
+				Timestamp:       timestamp,
+				SingleUseUUID:   uuidString,
+				PublicKeySHA256: sha256,
+			})
+		assert.ErrorIsNil(t, err)
+
+		signedData, err := signText(upsertPublicKeyJSON.Bytes(), unlockedKey)
+		assert.ErrorIsNil(t, err)
+		return signedData
+	}
+
+	setup()
+
+	// TODO: content header tests etc
+
+	t.Run("bad (truncated) signature", func(t *testing.T) {
+		goodSig := makeSignedData(t, now, uuid1.String(), validSha256)
+
+		truncatedSignature := goodSig[0 : len(goodSig)/2]
+
+		_, err := validateSignedData(truncatedSignature, armoredPublicKey, publicKey, now)
+		assert.Equal(t, "failed to verify: error finding clearsigned data", err.Error())
+	})
+
+	t.Run("mismatching SHA256", func(t *testing.T) {
+		armoredSignedData := makeSignedData(t, now, uuid1.String(), "0a0a")
+		_, err := validateSignedData(armoredSignedData, armoredPublicKey, publicKey, now)
+		assert.Equal(t, "mismatching public key SHA256", err.Error())
+	})
+
+	t.Run("timestamp too far in the future", func(t *testing.T) {
+		thirtyHoursFromNow := now.Add(time.Hour * time.Duration(30))
+		armoredSignedData := makeSignedData(t, thirtyHoursFromNow, uuid1.String(), validSha256)
+
+		_, err := validateSignedData(armoredSignedData, armoredPublicKey, publicKey, now)
+		assert.Equal(t, "timestamp is not within 24 hours of server time", err.Error())
+	})
+
+	t.Run("timestamp too far in the past", func(t *testing.T) {
+		thirtyHoursInPast := now.Add(time.Hour * time.Duration(-30))
+		armoredSignedData := makeSignedData(t, thirtyHoursInPast, uuid1.String(), validSha256)
+
+		_, err := validateSignedData(armoredSignedData, armoredPublicKey, publicKey, now)
+		assert.Equal(t, "timestamp is not within 24 hours of server time", err.Error())
+	})
+
+	t.Run("single use UUID not a valid UUID", func(t *testing.T) {
+		armoredSignedData := makeSignedData(t, now, "foo", validSha256)
+
+		_, err := validateSignedData(armoredSignedData, armoredPublicKey, publicKey, now)
+		assert.Equal(t, "bad SingleUseUUID: uuid: incorrect UUID length: foo", err.Error())
+	})
+
+	t.Run("single use UUID already used", func(t *testing.T) {
+		repeatedUUID := uuid.Must(uuid.NewV4())
+
+		datastore.StoreSingleUseNumber(repeatedUUID, now)
+
+		armoredSignedData := makeSignedData(t, now, repeatedUUID.String(), validSha256)
+
+		_, err := validateSignedData(armoredSignedData, armoredPublicKey, publicKey, now)
+		assert.Equal(t, "bad SingleUseUUID: single use UUID already used", err.Error())
+	})
+
+	t.Run("valid signed data, brand new key", func(t *testing.T) {
+
+		requestData := v1structs.UpsertPublicKeyRequest{
+			ArmoredPublicKey: exampledata.ExamplePublicKey4,
+			ArmoredSignedJSON: makeSignedData(
+				t,
+				time.Now(),
+				uuid.Must(uuid.NewV4()).String(),
+				validSha256),
+		}
+
+		response := callApiWithJson(t, "POST", "/v1/keys", requestData)
+		fmt.Print(response.Body)
+		assertStatusCode(t, http.StatusOK, response.Code)
+
+		responseData := v1structs.UpsertPublicKeyResponse{}
+		err = json.NewDecoder(response.Body).Decode(&responseData)
+		assert.ErrorIsNil(t, err)
+
+		newPasswordReader, err := decryptMessage(responseData.ArmoredEncryptedBasicAuthPassword, unlockedKey)
+		assert.ErrorIsNil(t, err)
+
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(newPasswordReader)
+
+		_, err = uuid.FromString(buf.String())
+		assert.ErrorIsNil(t, err)
+	})
+
+	teardown()
 }
 
 func TestSendSecretHandler(t *testing.T) {
@@ -542,4 +667,22 @@ func decryptMessage(armoredEncryptedSecret string, key *pgpkey.PgpKey) (io.Reade
 		return nil, fmt.Errorf("signature error: %v", err)
 	}
 	return decryptedBuf, nil
+}
+
+func signText(bytesToSign []byte, key *pgpkey.PgpKey) (armoredSigned string, err error) {
+	armorOutBuffer := bytes.NewBuffer(nil)
+	privKey := key.Entity.PrivateKey
+
+	armorWriteCloser, err := clearsign.Encode(armorOutBuffer, privKey, nil)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = armorWriteCloser.Write(bytesToSign)
+	if err != nil {
+		return "", err
+	}
+
+	armorWriteCloser.Close()
+	return armorOutBuffer.String(), nil
 }

@@ -34,4 +34,9 @@ var migrateDatabaseStatements = []string{
 
 	// allow multiple key_id in email_key_link (many email -> 1 key)
 	`ALTER TABLE email_key_link DROP CONSTRAINT IF EXISTS email_key_link_key_id_key`,
+
+	`CREATE TABLE IF NOT EXISTS single_use_uuids (
+                uuid UUID PRIMARY KEY,
+                created_at TIMESTAMP NOT NULL
+    )`,
 }
