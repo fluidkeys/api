@@ -52,7 +52,7 @@ func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	singleUseUUID, err := validateSignedData(requestData.ArmoredSignedJSON, requestData.ArmoredPublicKey, publicKey)
+	singleUseUUID, err := validateSignedData(requestData.ArmoredSignedJSON, requestData.ArmoredPublicKey, publicKey, time.Now())
 	if err != nil {
 		writeJsonError(w, err, http.StatusBadRequest)
 		return
@@ -85,7 +85,7 @@ func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(w, responseData)
 }
 
-func validateSignedData(armoredSignedData string, armoredPublicKey string, publicKey *pgpkey.PgpKey) (*uuid.UUID, error) {
+func validateSignedData(armoredSignedData string, armoredPublicKey string, publicKey *pgpkey.PgpKey, now time.Time) (*uuid.UUID, error) {
 	verifiedJSON, err := verify([]byte(armoredSignedData), publicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify: %v", err)
@@ -98,7 +98,7 @@ func validateSignedData(armoredSignedData string, armoredPublicKey string, publi
 		return nil, fmt.Errorf("failed to decode: %v", err)
 	}
 
-	if !within24Hours(time.Now(), signedData.Timestamp) {
+	if !within24Hours(now, signedData.Timestamp) {
 		// TODO: log possible attack
 		return nil, fmt.Errorf("timestamp is not within 24 hours of server time")
 	}

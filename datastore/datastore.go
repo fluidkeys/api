@@ -248,7 +248,7 @@ func VerifySingleUseNumberNotStored(singleUseUUID uuid.UUID) error {
 	}
 
 	if count > 0 {
-		return fmt.Errorf("single use UUID %s already used", singleUseUUID)
+		return fmt.Errorf("single use UUID already used")
 	}
 
 	return nil
