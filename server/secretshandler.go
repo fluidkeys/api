@@ -196,7 +196,7 @@ func deleteSecretHandler(w http.ResponseWriter, r *http.Request) {
 	myPublicKey, err := getAuthorizedUserPublicKey(r)
 
 	if err != nil {
-		writeJsonError(w, err, http.StatusBadRequest)
+		writeJsonError(w, err, http.StatusUnauthorized)
 		return
 	}
 
