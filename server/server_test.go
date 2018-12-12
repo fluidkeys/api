@@ -573,6 +573,86 @@ func TestListSecretsHandler(t *testing.T) {
 
 }
 
+func TestDeleteSecretHandler(t *testing.T) {
+	key, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey4)
+	assert.ErrorIsNil(t, err)
+
+	// otherKey, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey3)
+	assert.ErrorIsNil(t, err)
+
+	validEncryptedArmoredSecret, err := encryptStringToArmor("test foo", key)
+
+	var secretUUID *uuid.UUID
+
+	setup := func() {
+		now := time.Date(2018, 6, 5, 16, 30, 5, 0, time.UTC)
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey4))
+		secretUUID, err = datastore.CreateSecret(
+			exampledata.ExampleFingerprint4, validEncryptedArmoredSecret, now)
+		assert.ErrorIsNil(t, err)
+	}
+	teardown := func() {
+		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.ErrorIsNil(t, err)
+	}
+
+	setup()
+
+	t.Run("invalid UUID in URL", func(t *testing.T) {
+		req, err := http.NewRequest("DELETE", "/v1/secrets/invalid-uuid", nil)
+		assert.ErrorIsNil(t, err)
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusNotFound, response.Code)
+	})
+
+	t.Run("without authorization header", func(t *testing.T) {
+		req, err := http.NewRequest("DELETE", "/v1/secrets/"+secretUUID.String(), nil)
+		assert.ErrorIsNil(t, err)
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusUnauthorized, response.Code)
+		assertHasJsonErrorDetail(t, response.Body,
+			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
+	})
+
+	t.Run("malformed authorization header", func(t *testing.T) {
+		req, err := http.NewRequest("DELETE", "/v1/secrets/"+secretUUID.String(), nil)
+		assert.ErrorIsNil(t, err)
+		req.Header.Set("Authorization", "invalid")
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusUnauthorized, response.Code)
+		assertHasJsonErrorDetail(t, response.Body,
+			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
+	})
+
+	t.Run("delete secret good request", func(t *testing.T) {
+		req, err := http.NewRequest("DELETE", "/v1/secrets/"+secretUUID.String(), nil)
+		assert.ErrorIsNil(t, err)
+		req.Header.Set(
+			"Authorization",
+			fmt.Sprintf("tmpfingerprint: %s", exampledata.ExampleFingerprint4.Uri()),
+		)
+
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusAccepted, response.Code)
+
+		secrets, err := datastore.GetSecrets(exampledata.ExampleFingerprint4)
+		assert.ErrorIsNil(t, err)
+		if len(secrets) != 0 {
+			t.Fatalf("expected 0 secrets after delete, got %d: %v", len(secrets), secrets)
+		}
+	})
+
+	teardown()
+}
+
 func callApi(t *testing.T, method string, path string) *httptest.ResponseRecorder {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
