@@ -31,9 +31,34 @@ func Ping() error {
 	return db.Ping()
 }
 
+// RunInTransaction begins a new transaction and calls the given `fn` function
+// with the transaction.
+// If fn returns an error, the transaction will be rolled back and the samme
+// error will be returned by RunInTransaction
+// If fn returns error=nil, the transaction will be committed (although that
+// can fail, in which case an err is returned)
+func RunInTransaction(fn func(txn *sql.Tx) error) error {
+	txn, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("error calling db.Begin(): %v", err)
+	}
+
+	if err = fn(txn); err != nil {
+		txn.Rollback()
+		return err
+	}
+
+	if err = txn.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction: %v", err)
+	}
+
+	return nil
+}
+
 // UpsertPublicKey either inserts or updates a public key based on the
 // fingerprint. For updates, any foreign key relationships are maintained.
-func UpsertPublicKey(armoredPublicKey string) error {
+// txn is a database transaction, or nil to run outside of a transaction
+func UpsertPublicKey(txn *sql.Tx, armoredPublicKey string) error {
 	key, err := pgpkey.LoadFromArmoredPublicKey(armoredPublicKey)
 	if err != nil {
 		return fmt.Errorf("error loading armored key: %v", err)
@@ -46,7 +71,7 @@ func UpsertPublicKey(armoredPublicKey string) error {
 		  ON CONFLICT (fingerprint) DO UPDATE
 		      SET armored_public_key=EXCLUDED.armored_public_key`
 
-	_, err = db.Exec(query, dbFormat(fingerprint), armoredPublicKey)
+	_, err = transactionOrDatabase(txn).Exec(query, dbFormat(fingerprint), armoredPublicKey)
 
 	return err
 }
@@ -254,10 +279,14 @@ func VerifySingleUseNumberNotStored(singleUseUUID uuid.UUID) error {
 	return nil
 }
 
-func StoreSingleUseNumber(singleUseUUID uuid.UUID, now time.Time) error {
+// StoreSingleUseNumber saves the given singleUseUUID to the database with the
+// given now time.
+// txn is a database transaction, or nil to run outside of a transaction
+func StoreSingleUseNumber(txn *sql.Tx, singleUseUUID uuid.UUID, now time.Time) error {
 	query := `INSERT INTO single_use_uuids (uuid, created_at)
 	          VALUES ($1, $2)`
-	_, err := db.Exec(query, singleUseUUID, now)
+
+	_, err := transactionOrDatabase(txn).Exec(query, singleUseUUID, now)
 	return err
 }
 
@@ -330,6 +359,19 @@ func DropAllTheTables() error {
 		}
 	}
 	return nil
+}
+
+func transactionOrDatabase(txn *sql.Tx) execInterface {
+	if txn != nil {
+		return txn
+	} else {
+		return db
+	}
+}
+
+// execInterface allows a *sql.DB and a *sql.Tx to be used interchangeably
+type execInterface interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
 }
 
 func dbFormat(fingerprint fpr.Fingerprint) string {
