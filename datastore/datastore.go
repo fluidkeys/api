@@ -347,6 +347,7 @@ func DropAllTheTables() error {
 	}
 
 	var tablesToDrop = []string{
+		"single_use_uuids",
 		"email_key_link",
 		"secrets",
 		"keys",
