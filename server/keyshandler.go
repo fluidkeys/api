@@ -7,10 +7,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/fluidkeys/api/datastore"
+	"github.com/fluidkeys/api/email"
 	"github.com/fluidkeys/api/v1structs"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/gofrs/uuid"
@@ -75,6 +79,10 @@ func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("error storing single use UUID: %v", err)
 		}
 
+		if err = email.SendVerificationEmails(publicKey, getUserAgent(r), getIpAddresses(r)); err != nil {
+			return fmt.Errorf("error sending verification emails: %v", err)
+		}
+
 		return nil // no errors, allow transaction to commit
 	})
 
@@ -90,6 +98,27 @@ func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJsonResponse(w, responseData)
+}
+
+func getUserAgent(request *http.Request) string {
+	return request.Header.Get("User-Agent")
+}
+
+// getIpAddresses will return the first value in the comma-separated X-Forwarded-For
+// header, which heroku sends when using SSL termination. If that isn't present,
+// returns request.RemoteAddr.
+func getIpAddresses(request *http.Request) string {
+
+	if xForwardedFor := request.Header.Get("X-Forwarded-For"); xForwardedFor != "" {
+		return strings.Split(xForwardedFor, ",")[0]
+	}
+
+	if ip, _, err := net.SplitHostPort(request.RemoteAddr); err == nil {
+		return ip
+	}
+
+	log.Printf("no X-Forwarded-For and failed to SplitHostPort RemoteAddr '%s'", request.RemoteAddr)
+	return ""
 }
 
 func validateSignedData(armoredSignedData string, armoredPublicKey string, publicKey *pgpkey.PgpKey, now time.Time) (*uuid.UUID, error) {

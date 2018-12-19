@@ -156,6 +156,24 @@ func GetArmoredPublicKeyForFingerprint(fingerprint fpr.Fingerprint) (armoredPubl
 	return armoredPublicKey, true, nil
 }
 
+// HasActiveVerificationForEmail returns whether we recently sent a
+// verification email to the given email address, and if that verification
+// is still valid, e.g. not expired
+func HasActiveVerificationForEmail(email string) (bool, error) {
+	query := `SELECT COUNT(*)
+	          FROM email_verifications
+	          WHERE email_sent_to=$1
+		  AND valid_until < now()`
+
+	var count int
+	err := db.QueryRow(query, email).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
 func getKeyIdForFingerprint(fingerprint fpr.Fingerprint) (keyId int64, found bool, err error) {
 	query := `SELECT keys.id FROM keys WHERE fingerprint=$1`
 
