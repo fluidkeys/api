@@ -64,7 +64,7 @@ func TestPingEndpoint(t *testing.T) {
 
 func TestGetPublicKeyHandler(t *testing.T) {
 	assert.ErrorIsNil(t,
-		datastore.UpsertPublicKey(exampledata.ExamplePublicKey4),
+		datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4),
 	)
 	assert.ErrorIsNil(t,
 		datastore.LinkEmailToFingerprint("test4@example.com", exampledata.ExampleFingerprint4),
@@ -184,7 +184,7 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 	t.Run("single use UUID already used", func(t *testing.T) {
 		repeatedUUID := uuid.Must(uuid.NewV4())
 
-		datastore.StoreSingleUseNumber(repeatedUUID, now)
+		datastore.StoreSingleUseNumber(nil, repeatedUUID, now)
 
 		armoredSignedData := makeSignedData(t, now, repeatedUUID.String(), validSha256)
 
@@ -237,8 +237,8 @@ func TestSendSecretHandler(t *testing.T) {
 
 	setup := func() {
 		// put `key` and `otherKey` in the datastore, but not `unknownFingerprint`
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey4))
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey3))
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey3))
 	}
 	teardown := func() {
 		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
@@ -434,8 +434,8 @@ func TestListSecretsHandler(t *testing.T) {
 	setup := func() {
 		now := time.Date(2018, 6, 5, 16, 30, 5, 0, time.UTC)
 		// put `key` and `otherKey` in the datastore, but not `unknownFingerprint`
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey4))
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(exampledata.ExamplePublicKey3))
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
+		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey3))
 		secretUUID, err = datastore.CreateSecret(
 			exampledata.ExampleFingerprint4, validEncryptedArmoredSecret, now)
 		assert.ErrorIsNil(t, err)
