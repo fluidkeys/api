@@ -28,7 +28,6 @@ func TestRenderVerifyEmail(t *testing.T) {
 		gotSubject, err := render(verifySubjectTemplate, data)
 		assert.ErrorIsNil(t, err)
 
-		expectedSubject := `Verify test@example.com on Fluidkeys`
 		assert.Equal(t, expectedSubject, gotSubject)
 	})
 
@@ -37,6 +36,16 @@ func TestRenderVerifyEmail(t *testing.T) {
 		assert.ErrorIsNil(t, err)
 
 		assertEqualMultiLineStrings(t, expectedHtml, gotHtml)
+	})
+
+	t.Run("test email.renderSubjectAndBody populates .subject and .htmlBody", func(t *testing.T) {
+		email := email{}
+
+		err := email.renderSubjectAndBody(data)
+		assert.ErrorIsNil(t, err)
+
+		assert.Equal(t, expectedSubject, email.subject)
+		assertEqualMultiLineStrings(t, expectedHtml, email.htmlBody)
 	})
 
 }
@@ -72,6 +81,7 @@ func min(a, b int) int {
 	return b
 }
 
+const expectedSubject string = `Verify test@example.com on Fluidkeys`
 const expectedHtml string = `Verify your email address to allow others to find your PGP key and send you encrypted secrets.
 
 Click this link to verify your key now:
