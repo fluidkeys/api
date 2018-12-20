@@ -286,7 +286,7 @@ type verifyEmail struct {
 // funcMap defines template functions that transform variables into strings in the template
 var funcMap = template.FuncMap{
 	"FormatDateTime": func(t time.Time) string {
-		return t.Format("15:04:05 MST on 02 January 2006")
+		return t.Format("15:04:05 MST on 2 January 2006")
 	},
 	"FormatDate": func(t time.Time) string {
 		return t.Format("2 January 2006")
