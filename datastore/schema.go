@@ -39,4 +39,31 @@ var migrateDatabaseStatements = []string{
                 uuid UUID PRIMARY KEY,
                 created_at TIMESTAMP NOT NULL
     )`,
+
+	`CREATE TABLE IF NOT EXISTS email_verifications (
+		-- email_verifications tracks claims that a public key is
+		-- associated with an email address.
+		--
+		-- if the claim is verified (by opening a link sent to the
+		-- email address), an email_key_link row is added.
+		--
+		-- email_verifications are not immediately deleted as they
+		-- are a useful audit trail to use in the event of fake key
+		-- pretending to be associated with an email address
+
+                id BIGSERIAL PRIMARY KEY,
+                created_at TIMESTAMP NOT NULL,
+                valid_until TIMESTAMP NOT NULL,
+                secret_uuid UUID UNIQUE NOT NULL,
+
+                key_id INT REFERENCES keys(id) ON DELETE SET NULL,
+
+                key_fingerprint VARCHAR NOT NULL,
+
+                email_sent_to VARCHAR NOT NULL,
+                upsert_user_agent TEXT,
+                upsert_ip_address INET,
+                verify_user_agent TEXT,
+                verify_ip_address INET
+    )`,
 }
