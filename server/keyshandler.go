@@ -40,6 +40,8 @@ func getPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
+	now := time.Now()
+
 	requestData := v1structs.UpsertPublicKeyRequest{}
 
 	if err := decodeJsonRequest(r, &requestData); err != nil {
@@ -49,11 +51,18 @@ func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 
 	publicKey, err := pgpkey.LoadFromArmoredPublicKey(requestData.ArmoredPublicKey)
 	if err != nil {
-		writeJsonError(w, fmt.Errorf("error loading public key: %v", err), http.StatusBadRequest)
+		writeJsonError(w,
+			fmt.Errorf("error loading public key: %v", err),
+			http.StatusBadRequest)
 		return
 	}
 
-	singleUseUUID, err := validateSignedData(requestData.ArmoredSignedJSON, requestData.ArmoredPublicKey, publicKey, time.Now())
+	singleUseUUID, err := validateSignedData(
+		requestData.ArmoredSignedJSON,
+		requestData.ArmoredPublicKey,
+		publicKey,
+		now,
+	)
 	if err != nil {
 		writeJsonError(w, err, http.StatusBadRequest)
 		return
@@ -71,7 +80,7 @@ func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("error storing key: %v", err)
 		}
 
-		if err := datastore.StoreSingleUseNumber(txn, *singleUseUUID, time.Now()); err != nil {
+		if err := datastore.StoreSingleUseNumber(txn, *singleUseUUID, now); err != nil {
 			return fmt.Errorf("error storing single use UUID: %v", err)
 		}
 
@@ -92,7 +101,10 @@ func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(w, responseData)
 }
 
-func validateSignedData(armoredSignedData string, armoredPublicKey string, publicKey *pgpkey.PgpKey, now time.Time) (*uuid.UUID, error) {
+func validateSignedData(
+	armoredSignedData string, armoredPublicKey string,
+	publicKey *pgpkey.PgpKey, now time.Time) (*uuid.UUID, error) {
+
 	verifiedJSON, err := verify([]byte(armoredSignedData), publicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify: %v", err)
@@ -134,7 +146,9 @@ func validateSignedData(armoredSignedData string, armoredPublicKey string, publi
 	return &singleUseUUID, nil
 }
 
-func generateAndEncryptPassword(publicKey *pgpkey.PgpKey) (newPassword string, encrypted string, err error) {
+func generateAndEncryptPassword(publicKey *pgpkey.PgpKey) (
+	newPassword string, encrypted string, err error) {
+
 	if newUUID, err := uuid.NewV4(); err != nil {
 		return "", "", fmt.Errorf("error making UUID: %v", err)
 	} else {
