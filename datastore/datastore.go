@@ -156,10 +156,77 @@ func GetArmoredPublicKeyForFingerprint(fingerprint fpr.Fingerprint) (armoredPubl
 	return armoredPublicKey, true, nil
 }
 
-func getKeyIdForFingerprint(fingerprint fpr.Fingerprint) (keyId int64, found bool, err error) {
+// CreateVerification creates an email_verification for the given email address.
+// `email` is the exact (not canonicalized) email address we're going to send the email to
+// `fingerprint` is the fingerprint of the public key to link this email to
+// `userAgent` is from the upsert request (probably Fluidkeys)
+// `ipAddress` is the IP of the client that made the upsert request
+func CreateVerification(
+	txn *sql.Tx,
+	email string,
+	fp fpr.Fingerprint,
+	userAgent string,
+	ipAddress string,
+	now time.Time,
+) (*uuid.UUID, error) {
+
+	secretUUID, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+
+	keyId, found, err := getKeyIdForFingerprint(txn, fp)
+
+	if err != nil {
+		return nil, err
+	} else if !found {
+		return nil, fmt.Errorf("no key found for fingerprint")
+	}
+
+	createdAt := now
+	validUntil := createdAt.Add(time.Duration(15) * time.Minute)
+
+	query := `INSERT INTO email_verifications (
+                      created_at,
+		      valid_until,
+                      secret_uuid,
+                      key_id,
+                      key_fingerprint,
+                      email_sent_to,
+		      upsert_user_agent,
+		      upsert_ip_address
+		  )
+	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+
+	_, err = transactionOrDatabase(txn).Exec(
+		query, createdAt, validUntil, secretUUID, keyId, dbFormat(fp), email,
+		userAgent, ipAddress,
+	)
+	return &secretUUID, err
+}
+
+// HasActiveVerificationForEmail returns whether we recently sent a
+// verification email to the given email address, and if that verification
+// is still valid, e.g. not expired
+func HasActiveVerificationForEmail(txn *sql.Tx, email string) (bool, error) {
+	query := `SELECT COUNT(*)
+	          FROM email_verifications
+	          WHERE email_sent_to=$1
+		  AND valid_until > now()`
+
+	var count int
+	err := transactionOrDatabase(txn).QueryRow(query, email).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+func getKeyIdForFingerprint(txn *sql.Tx, fingerprint fpr.Fingerprint) (keyId int64, found bool, err error) {
 	query := `SELECT keys.id FROM keys WHERE fingerprint=$1`
 
-	err = db.QueryRow(query, dbFormat(fingerprint)).Scan(&keyId)
+	err = transactionOrDatabase(txn).QueryRow(query, dbFormat(fingerprint)).Scan(&keyId)
 	if err == sql.ErrNoRows {
 		return 0, false, nil // return found=false without an error
 
@@ -178,7 +245,7 @@ func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret s
 		return nil, err
 	}
 
-	keyId, found, err := getKeyIdForFingerprint(recipientFingerprint)
+	keyId, found, err := getKeyIdForFingerprint(nil, recipientFingerprint)
 
 	if err != nil {
 		return nil, err
@@ -348,6 +415,7 @@ func DropAllTheTables() error {
 
 	var tablesToDrop = []string{
 		"single_use_uuids",
+		"email_verifications",
 		"email_key_link",
 		"secrets",
 		"keys",
@@ -362,7 +430,7 @@ func DropAllTheTables() error {
 	return nil
 }
 
-func transactionOrDatabase(txn *sql.Tx) execInterface {
+func transactionOrDatabase(txn *sql.Tx) txDbInterface {
 	if txn != nil {
 		return txn
 	} else {
@@ -370,9 +438,10 @@ func transactionOrDatabase(txn *sql.Tx) execInterface {
 	}
 }
 
-// execInterface allows a *sql.DB and a *sql.Tx to be used interchangeably
-type execInterface interface {
+// txDbInterface allows a *sql.DB and a *sql.Tx to be used interchangeably
+type txDbInterface interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
 func dbFormat(fingerprint fpr.Fingerprint) string {
