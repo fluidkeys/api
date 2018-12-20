@@ -209,7 +209,7 @@ func (e *email) send() error {
 	}
 
 	if e.subject == "" {
-		return fmt.Errorf("empty HTML body")
+		return fmt.Errorf("empty subject")
 	}
 
 	from, err := mail.ParseAddress(e.from) // validate from address
