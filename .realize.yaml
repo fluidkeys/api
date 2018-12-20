@@ -3,7 +3,7 @@ settings:
     force: true
     interval: 500ms
 schema:
-- name: /home/vagrant/go/src/github.com/fluidkeys/api
+- name: api
   path: /home/vagrant/go/src/github.com/fluidkeys/api
   commands:
     install:
