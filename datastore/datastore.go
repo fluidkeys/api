@@ -362,7 +362,7 @@ func DropAllTheTables() error {
 	return nil
 }
 
-func transactionOrDatabase(txn *sql.Tx) execInterface {
+func transactionOrDatabase(txn *sql.Tx) txDbInterface {
 	if txn != nil {
 		return txn
 	} else {
@@ -370,9 +370,10 @@ func transactionOrDatabase(txn *sql.Tx) execInterface {
 	}
 }
 
-// execInterface allows a *sql.DB and a *sql.Tx to be used interchangeably
-type execInterface interface {
+// txDbInterface allows a *sql.DB and a *sql.Tx to be used interchangeably
+type txDbInterface interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
 func dbFormat(fingerprint fpr.Fingerprint) string {
