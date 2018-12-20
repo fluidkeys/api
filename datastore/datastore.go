@@ -156,10 +156,10 @@ func GetArmoredPublicKeyForFingerprint(fingerprint fpr.Fingerprint) (armoredPubl
 	return armoredPublicKey, true, nil
 }
 
-func getKeyIdForFingerprint(fingerprint fpr.Fingerprint) (keyId int64, found bool, err error) {
+func getKeyIdForFingerprint(txn *sql.Tx, fingerprint fpr.Fingerprint) (keyId int64, found bool, err error) {
 	query := `SELECT keys.id FROM keys WHERE fingerprint=$1`
 
-	err = db.QueryRow(query, dbFormat(fingerprint)).Scan(&keyId)
+	err = transactionOrDatabase(txn).QueryRow(query, dbFormat(fingerprint)).Scan(&keyId)
 	if err == sql.ErrNoRows {
 		return 0, false, nil // return found=false without an error
 
@@ -178,7 +178,7 @@ func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret s
 		return nil, err
 	}
 
-	keyId, found, err := getKeyIdForFingerprint(recipientFingerprint)
+	keyId, found, err := getKeyIdForFingerprint(nil, recipientFingerprint)
 
 	if err != nil {
 		return nil, err
