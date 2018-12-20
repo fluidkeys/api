@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -64,15 +65,21 @@ func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = datastore.UpsertPublicKey(requestData.ArmoredPublicKey)
-	if err != nil {
-		writeJsonError(w, fmt.Errorf("error storing key: %v", err), http.StatusInternalServerError)
-		return
-	}
+	err = datastore.RunInTransaction(func(txn *sql.Tx) error {
 
-	err = datastore.StoreSingleUseNumber(*singleUseUUID, time.Now())
+		if err := datastore.UpsertPublicKey(txn, requestData.ArmoredPublicKey); err != nil {
+			return fmt.Errorf("error storing key: %v", err)
+		}
+
+		if err := datastore.StoreSingleUseNumber(txn, *singleUseUUID, time.Now()); err != nil {
+			return fmt.Errorf("error storing single use UUID: %v", err)
+		}
+
+		return nil // no errors, allow transaction to commit
+	})
+
 	if err != nil {
-		writeJsonError(w, fmt.Errorf("error storing key: %v", err), http.StatusInternalServerError)
+		writeJsonError(w, err, http.StatusInternalServerError)
 		return
 	}
 
