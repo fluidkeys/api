@@ -122,7 +122,7 @@ func sendVerificationEmail(
 // shouldSendVerificationEmail returns true if an email address should receive a new verification
 // email
 func shouldSendVerificationEmail(txn *sql.Tx, email string) (bool, error) {
-	_, alreadyLinked, err := datastore.GetArmoredPublicKeyForEmail(email)
+	_, alreadyLinked, err := datastore.GetArmoredPublicKeyForEmail(txn, email)
 	if err != nil {
 		return false, err
 	}

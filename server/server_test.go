@@ -67,10 +67,10 @@ func TestGetPublicKeyHandler(t *testing.T) {
 		datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4),
 	)
 	assert.ErrorIsNil(t,
-		datastore.LinkEmailToFingerprint("test4@example.com", exampledata.ExampleFingerprint4),
+		datastore.LinkEmailToFingerprint(nil, "test4@example.com", exampledata.ExampleFingerprint4),
 	)
 	assert.ErrorIsNil(t,
-		datastore.LinkEmailToFingerprint("test4+foo@example.com", exampledata.ExampleFingerprint4),
+		datastore.LinkEmailToFingerprint(nil, "test4+foo@example.com", exampledata.ExampleFingerprint4),
 	)
 
 	t.Run("with no match on email", func(t *testing.T) {
