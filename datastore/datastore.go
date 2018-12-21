@@ -106,13 +106,13 @@ func DeletePublicKey(fingerprint fpr.Fingerprint) (found bool, err error) {
 // when queried for the given email address.
 // If there is no public key in the database matching the fingerprint, an
 // error will be returned.
-func LinkEmailToFingerprint(email string, fingerprint fpr.Fingerprint) error {
+func LinkEmailToFingerprint(txn *sql.Tx, email string, fingerprint fpr.Fingerprint) error {
 	query := `INSERT INTO email_key_link (email, key_id)
 	          VALUES($1, (SELECT id FROM keys WHERE fingerprint=$2))
 		  ON CONFLICT(email) DO UPDATE
 		      SET key_id=EXCLUDED.key_id`
 
-	_, err := db.Exec(query, email, dbFormat(fingerprint))
+	_, err := transactionOrDatabase(txn).Exec(query, email, dbFormat(fingerprint))
 	return err
 }
 
