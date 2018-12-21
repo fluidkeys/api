@@ -111,11 +111,11 @@ func sendVerificationEmail(
 		return fmt.Errorf("error rendering email: %v", err)
 	}
 
-	log.Printf("email.htmlBody: %s\n", email.htmlBody)
-
 	if err := email.send(); err != nil {
 		return fmt.Errorf("error sending mail: %v", err)
 	}
+	log.Printf("sending verification email to %s for key %s",
+		emailAddress, publicKey.Fingerprint().Hex())
 	return nil
 }
 
@@ -247,6 +247,7 @@ func (e *email) send() error {
 	} else {
 		addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
 		auth := smtp.PlainAuth("", smtpUsername, smtpPassword, smtpHost)
+		log.Printf("sending email to %s via %s", to.Address, addr)
 		return smtp.SendMail(addr, auth, from.Address, []string{to.Address}, buffer.Bytes())
 	}
 }
