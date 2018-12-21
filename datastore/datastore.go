@@ -207,6 +207,44 @@ func CreateVerification(
 	return &secretUUID, err
 }
 
+// MarkVerificationAsVerified sets the user agent and IP address from the verifying HTTP request.
+// Typically this is a browser from someone opening a link in their email.
+func MarkVerificationAsVerified(txn *sql.Tx, secretUUID uuid.UUID,
+	userAgent string, ipAddress string) error {
+
+	query := `UPDATE email_verifications
+		         SET (verify_user_agent, verify_ip_address) = ($2, $3)
+			 WHERE secret_uuid=$1`
+
+	_, err := txn.Exec(query, secretUUID, userAgent, ipAddress)
+	return err
+}
+
+// GetVerification returns the email and fingerprint of a currently-active email_verification
+// for the given secret UUID token.
+func GetVerification(txn *sql.Tx, secretUUID uuid.UUID) (string, *fpr.Fingerprint, error) {
+	query := `SELECT email_sent_to, key_fingerprint
+                  FROM email_verifications
+                  WHERE secret_uuid=$1
+                  AND valid_until > now()`
+	var email string
+	var fingerprintString string
+
+	err := txn.QueryRow(query, secretUUID).Scan(&email, &fingerprintString)
+	if err == sql.ErrNoRows {
+		return "", nil, fmt.Errorf("no such verification token '%s'", secretUUID)
+	} else if err != nil {
+		return "", nil, err
+	}
+
+	fingerprint, err := parseDbFormat(fingerprintString)
+	if err != nil {
+		return "", nil, fmt.Errorf("error parsing fingerprint '%s': %v",
+			fingerprintString, err)
+	}
+	return email, &fingerprint, nil
+}
+
 // HasActiveVerificationForEmail returns whether we recently sent a
 // verification email to the given email address, and if that verification
 // is still valid, e.g. not expired
@@ -448,6 +486,11 @@ type txDbInterface interface {
 
 func dbFormat(fingerprint fpr.Fingerprint) string {
 	return fmt.Sprintf("4:%s", fingerprint.Hex())
+}
+
+// returns a fingerprint.Fingerprint from e.g '4:'
+func parseDbFormat(fingerprint string) (fpr.Fingerprint, error) {
+	return fpr.Parse(fingerprint[2:])
 }
 
 type secret struct {
