@@ -296,16 +296,37 @@ var funcMap = template.FuncMap{
 }
 
 const verifySubjectTemplate = "Verify {{.Email}} on Fluidkeys"
-const verifyHtmlBodyTemplate string = `Verify your email address to allow others to find your PGP key and send you encrypted secrets.
+const verifyHtmlBodyTemplate string = `<!DOCTYPE HTML>
 
-Click this link to verify your key now:
+<html>
+<body>
+<p>
+Verify your email address to allow others to find your PGP key and send you encrypted secrets.
+</p>
 
-<a href="{{.VerificationUrl}}">Verify {{.Email}} and allow others to find your PGP key</a>
+<p>
+<a href="{{.VerificationUrl}}">Verify {{.Email}}</a>
+</p>
 
----
+<p>
+If clicking the link above doesn't work, copy and paste this link into your browser:
+</p>
 
-You're receiving this email because a PGP public key was uploaded to Fluidkeys from {{.RequestIpAddress}} at {{.RequestTime|FormatDateTime}}.
+<p>
+<a href="{{.VerificationUrl}}">{{.VerificationUrl}}</a>
+</p>
 
+<hr>
+<p>
+You're receiving this email because a PGP public key was uploaded to <a href="https://www.fluidkeys.com">Fluidkeys</a> from {{.RequestIpAddress}} at {{.RequestTime|FormatDateTime}}.
+
+<p>
 Key {{.KeyFingerprint}} created {{.KeyCreatedDate|FormatDate}}
+</p>
 
-If you aren't expecting this email, please reply to this email so we can investigate.`
+<p>
+If you aren't expecting this email, please reply to this email so we can investigate.
+</p>
+
+</body>
+</html>`

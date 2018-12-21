@@ -82,16 +82,37 @@ func min(a, b int) int {
 }
 
 const expectedSubject string = `Verify test@example.com on Fluidkeys`
-const expectedHtml string = `Verify your email address to allow others to find your PGP key and send you encrypted secrets.
+const expectedHtml string = `<!DOCTYPE HTML>
 
-Click this link to verify your key now:
+<html>
+<body>
+<p>
+Verify your email address to allow others to find your PGP key and send you encrypted secrets.
+</p>
 
-<a href="https://example.com/test">Verify test@example.com and allow others to find your PGP key</a>
+<p>
+<a href="https://example.com/test">Verify test@example.com</a>
+</p>
 
----
+<p>
+If clicking the link above doesn't work, copy and paste this link into your browser:
+</p>
 
-You're receiving this email because a PGP public key was uploaded to Fluidkeys from 1.1.1.1 at 16:15:37 UTC on 15 June 2018.
+<p>
+<a href="https://example.com/test">https://example.com/test</a>
+</p>
 
+<hr>
+<p>
+You're receiving this email because a PGP public key was uploaded to <a href="https://www.fluidkeys.com">Fluidkeys</a> from 1.1.1.1 at 16:15:37 UTC on 15 June 2018.
+
+<p>
 Key A999B7498D1A8DC473E53C92309F635DAD1B5517 created 5 February 2016
+</p>
 
-If you aren't expecting this email, please reply to this email so we can investigate.`
+<p>
+If you aren't expecting this email, please reply to this email so we can investigate.
+</p>
+
+</body>
+</html>`
