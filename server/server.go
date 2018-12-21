@@ -18,6 +18,8 @@ func init() {
 
 	subrouter.HandleFunc("/ping/{word}", pingHandler).Methods("GET")
 
+	subrouter.HandleFunc("/email/verify/{uuid:"+uuid4Pattern+"}", verifyEmailHandler).Methods("GET", "POST")
+
 	subrouter.HandleFunc("/email/{email}/key", getPublicKeyHandler).Methods("GET")
 	subrouter.HandleFunc("/keys", upsertPublicKeyHandler).Methods("POST")
 
