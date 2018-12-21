@@ -134,6 +134,7 @@ func shouldSendVerificationEmail(txn *sql.Tx, email string) (bool, error) {
 		//    currently allow. The email_key_link must be deleted
 		//    before the email can be linked again. Note that this
 		//    happens if the whole linked *key* is deleted.
+		log.Printf("email '%s' already linked to a key, not sending email", email)
 		return false, nil
 	}
 
