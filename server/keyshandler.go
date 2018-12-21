@@ -26,7 +26,7 @@ func getPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 
 	responseData := v1structs.GetPublicKeyResponse{}
 
-	armoredPublicKey, found, err := datastore.GetArmoredPublicKeyForEmail(email)
+	armoredPublicKey, found, err := datastore.GetArmoredPublicKeyForEmail(nil, email)
 	if err != nil {
 		writeJsonError(w, err, http.StatusInternalServerError)
 		return

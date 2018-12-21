@@ -116,7 +116,9 @@ func LinkEmailToFingerprint(txn *sql.Tx, email string, fingerprint fpr.Fingerpri
 	return err
 }
 
-func GetArmoredPublicKeyForEmail(email string) (armoredPublicKey string, found bool, err error) {
+func GetArmoredPublicKeyForEmail(txn *sql.Tx, email string) (
+	armoredPublicKey string, found bool, err error) {
+
 	query := `SELECT email_key_link.email,
 	                 keys.armored_public_key
 		  FROM email_key_link
@@ -125,7 +127,7 @@ func GetArmoredPublicKeyForEmail(email string) (armoredPublicKey string, found b
 
 	var gotEmail string
 
-	err = db.QueryRow(query, email).Scan(&gotEmail, &armoredPublicKey)
+	err = transactionOrDatabase(txn).QueryRow(query, email).Scan(&gotEmail, &armoredPublicKey)
 	if err == sql.ErrNoRows {
 		return "", false, nil // return found=false without an error
 
