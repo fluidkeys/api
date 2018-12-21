@@ -157,7 +157,7 @@ func shouldSendVerificationEmail(txn *sql.Tx, email string) (bool, error) {
 }
 
 func makeVerificationUrl(secretUUID uuid.UUID) string {
-	return fmt.Sprintf("https://api.fluidkeys.com/v1/emails/verify/%s", secretUUID.String())
+	return fmt.Sprintf("https://api.fluidkeys.com/v1/email/verify/%s", secretUUID.String())
 }
 
 type email struct {
