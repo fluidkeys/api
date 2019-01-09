@@ -21,6 +21,22 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func getAsciiArmoredPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
+	email := mux.Vars(r)["email"]
+
+	armoredPublicKey, found, err := datastore.GetArmoredPublicKeyForEmail(nil, email)
+	if err != nil {
+		writeJsonError(w, err, http.StatusInternalServerError)
+		return
+	} else if !found {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "Key not found for %s", email)
+		return
+	}
+
+	fmt.Fprintf(w, armoredPublicKey)
+}
+
 func getPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	email := mux.Vars(r)["email"]
 
