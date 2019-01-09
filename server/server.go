@@ -21,6 +21,7 @@ func init() {
 	subrouter.HandleFunc("/email/verify/{uuid:"+uuid4Pattern+"}", verifyEmailHandler).Methods("GET", "POST")
 
 	subrouter.HandleFunc("/email/{email}/key", getPublicKeyHandler).Methods("GET")
+	subrouter.HandleFunc("/email/{email}/key.asc", getAsciiArmoredPublicKeyHandler).Methods("GET")
 	subrouter.HandleFunc("/keys", upsertPublicKeyHandler).Methods("POST")
 
 	subrouter.HandleFunc("/secrets", sendSecretHandler).Methods("POST")
