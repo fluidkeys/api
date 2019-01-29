@@ -141,10 +141,7 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 			response := callApi(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex()+".asc")
 			assertStatusCode(t, http.StatusOK, response.Code)
 
-			body, err := ioutil.ReadAll(response.Body)
-			assert.ErrorIsNil(t, err)
-
-			assert.Equal(t, string(body), exampledata.ExamplePublicKey4)
+			assertBodyEqualTo(t, response.Body, exampledata.ExamplePublicKey4)
 		})
 	})
 
@@ -771,6 +768,13 @@ func assertBodyDecodesInto(t *testing.T, body io.Reader, responseStruct interfac
 	if err := json.NewDecoder(body).Decode(&responseStruct); err != nil {
 		t.Fatalf("failed to decode body as JSON: %v", err)
 	}
+}
+
+func assertBodyEqualTo(t *testing.T, bodyReader io.Reader, expectedBody string) {
+	body, err := ioutil.ReadAll(bodyReader)
+	assert.ErrorIsNil(t, err)
+
+	assert.Equal(t, string(body), exampledata.ExamplePublicKey4)
 }
 
 func decryptMessage(armoredEncryptedSecret string, key *pgpkey.PgpKey) (io.Reader, error) {
