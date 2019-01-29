@@ -22,6 +22,17 @@ func init() {
 
 	subrouter.HandleFunc("/email/{email}/key", getPublicKeyByEmailHandler).Methods("GET")
 	subrouter.HandleFunc("/email/{email}/key.asc", getAsciiArmoredPublicKeyByEmailHandler).Methods("GET")
+
+	subrouter.HandleFunc(
+		"/key/{fingerprint:"+v4FingerprintPattern+"}",
+		getPublicKeyByFingerprintHandler,
+	).Methods("GET")
+
+	subrouter.HandleFunc(
+		"/key/{fingerprint:"+v4FingerprintPattern+"}.asc",
+		getAsciiArmoredPublicKeyByFingerprintHandler,
+	).Methods("GET")
+
 	subrouter.HandleFunc("/keys", upsertPublicKeyHandler).Methods("POST")
 
 	subrouter.HandleFunc("/secrets", sendSecretHandler).Methods("POST")
@@ -62,3 +73,4 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 const uuid4Pattern string = `[0-9a-f]{8}\-[0-9a-f]{4}\-4[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12}`
+const v4FingerprintPattern string = `[0-9A-F]{40}`
