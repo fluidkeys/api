@@ -74,31 +74,59 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 		datastore.LinkEmailToFingerprint(nil, "test4+foo@example.com", exampledata.ExampleFingerprint4),
 	)
 
-	t.Run("with no match on email", func(t *testing.T) {
-		response := callApi(t, "GET", "/v1/email/missing@example.com/key")
+	t.Run("JSON endpoint", func(t *testing.T) {
+		t.Run("with no match on email", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/email/missing@example.com/key")
 
-		assertStatusCode(t, http.StatusNotFound, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
-			"couldn't find a public key for email address 'missing@example.com'")
+			assertStatusCode(t, http.StatusNotFound, response.Code)
+			assertHasJsonErrorDetail(t, response.Body,
+				"couldn't find a public key for email address 'missing@example.com'")
+		})
+
+		t.Run("with match on email", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/email/test4@example.com/key")
+			assertStatusCode(t, http.StatusOK, response.Code)
+
+			responseData := v1structs.GetPublicKeyResponse{}
+			assertBodyDecodesInto(t, response.Body, &responseData)
+			assert.Equal(t, responseData.ArmoredPublicKey, exampledata.ExamplePublicKey4)
+		})
+
+		t.Run("with + in email, request not urlencoded", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/email/test4+foo@example.com/key")
+			assertStatusCode(t, http.StatusOK, response.Code)
+		})
+
+		t.Run("with + in email, request urlencoded", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
+			assertStatusCode(t, http.StatusOK, response.Code)
+		})
 	})
 
-	t.Run("with match on email", func(t *testing.T) {
-		response := callApi(t, "GET", "/v1/email/test4@example.com/key")
-		assertStatusCode(t, http.StatusOK, response.Code)
+	t.Run("ascii-armored endpoint", func(t *testing.T) {
+		t.Run("with no match on email", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/email/missing@example.com/key.asc")
 
-		responseData := v1structs.GetPublicKeyResponse{}
-		assertBodyDecodesInto(t, response.Body, &responseData)
-		assert.Equal(t, responseData.ArmoredPublicKey, exampledata.ExamplePublicKey4)
-	})
+			assertStatusCode(t, http.StatusNotFound, response.Code)
+			assertHasJsonErrorDetail(t, response.Body,
+				"couldn't find a public key for email address 'missing@example.com'")
+		})
 
-	t.Run("with + in email, request not urlencoded", func(t *testing.T) {
-		response := callApi(t, "GET", "/v1/email/test4+foo@example.com/key")
-		assertStatusCode(t, http.StatusOK, response.Code)
-	})
+		t.Run("with match on email", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/email/test4@example.com/key.asc")
+			assertStatusCode(t, http.StatusOK, response.Code)
+			assertBodyEqualTo(t, response.Body, exampledata.ExamplePublicKey4)
+		})
 
-	t.Run("with + in email, request urlencoded", func(t *testing.T) {
-		response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
-		assertStatusCode(t, http.StatusOK, response.Code)
+		t.Run("with + in email, request not urlencoded", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/email/test4+foo@example.com/key.asc")
+			assertStatusCode(t, http.StatusOK, response.Code)
+		})
+
+		t.Run("with + in email, request urlencoded", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key.asc")
+			assertStatusCode(t, http.StatusOK, response.Code)
+		})
 	})
 }
 
