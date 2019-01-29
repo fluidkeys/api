@@ -62,7 +62,7 @@ func TestPingEndpoint(t *testing.T) {
 	})
 }
 
-func TestGetPublicKeyHandler(t *testing.T) {
+func TestGetPublicKeyByEmailHandler(t *testing.T) {
 	assert.ErrorIsNil(t,
 		datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4),
 	)
