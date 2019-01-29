@@ -23,41 +23,18 @@ import (
 )
 
 func getAsciiArmoredPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
-	email := mux.Vars(r)["email"]
-
-	armoredPublicKey, found, err := datastore.GetArmoredPublicKeyForEmail(nil, email)
-	if err != nil {
-		writeJsonError(w, err, http.StatusInternalServerError)
-		return
-	} else if !found {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "Key not found for %s", email)
-		return
+	if armoredPublicKey, ok := getKeyByEmail(w, r); ok {
+		fmt.Fprintf(w, armoredPublicKey)
 	}
-
-	fmt.Fprintf(w, armoredPublicKey)
 }
 
 func getPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
-	email := mux.Vars(r)["email"]
-
-	responseData := v1structs.GetPublicKeyResponse{}
-
-	armoredPublicKey, found, err := datastore.GetArmoredPublicKeyForEmail(nil, email)
-	if err != nil {
-		writeJsonError(w, err, http.StatusInternalServerError)
-		return
-	} else if !found {
-		writeJsonError(
-			w,
-			fmt.Errorf("couldn't find a public key for email address '%s'", email),
-			http.StatusNotFound,
-		)
-		return
+	if armoredPublicKey, ok := getKeyByEmail(w, r); ok {
+		responseData := v1structs.GetPublicKeyResponse{
+			ArmoredPublicKey: armoredPublicKey,
+		}
+		writeJsonResponse(w, responseData)
 	}
-
-	responseData.ArmoredPublicKey = armoredPublicKey
-	writeJsonResponse(w, responseData)
 }
 
 func getAsciiArmoredPublicKeyByFingerprintHandler(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +50,27 @@ func getPublicKeyByFingerprintHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJsonResponse(w, responseData)
 	}
+}
+
+// getKeyByEmail finds and returns an armored key for the given request, or if there's an
+// error, writes out an error response to w.
+// Returns armored key, success
+func getKeyByEmail(w http.ResponseWriter, r *http.Request) (string, bool) {
+	email := mux.Vars(r)["email"]
+
+	armoredPublicKey, found, err := datastore.GetArmoredPublicKeyForEmail(nil, email)
+	if err != nil {
+		writeJsonError(w, err, http.StatusInternalServerError)
+		return "", false
+	} else if !found {
+		writeJsonError(
+			w,
+			fmt.Errorf("couldn't find a public key for email address '%s'", email),
+			http.StatusNotFound,
+		)
+		return "", false
+	}
+	return armoredPublicKey, true
 }
 
 // getKeyByFingerprint finds and returns an armored key for the given request, or if there's an
