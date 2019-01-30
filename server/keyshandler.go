@@ -16,12 +16,13 @@ import (
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/email"
 	"github.com/fluidkeys/api/v1structs"
+	"github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
 )
 
-func getAsciiArmoredPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
+func getAsciiArmoredPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
 	email := mux.Vars(r)["email"]
 
 	armoredPublicKey, found, err := datastore.GetArmoredPublicKeyForEmail(nil, email)
@@ -37,7 +38,7 @@ func getAsciiArmoredPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, armoredPublicKey)
 }
 
-func getPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
+func getPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
 	email := mux.Vars(r)["email"]
 
 	responseData := v1structs.GetPublicKeyResponse{}
@@ -57,6 +58,49 @@ func getPublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 
 	responseData.ArmoredPublicKey = armoredPublicKey
 	writeJsonResponse(w, responseData)
+}
+
+func getAsciiArmoredPublicKeyByFingerprintHandler(w http.ResponseWriter, r *http.Request) {
+	if armoredPublicKey, ok := getKeyByFingerprint(w, r); ok {
+		fmt.Fprintf(w, armoredPublicKey)
+	}
+}
+
+func getPublicKeyByFingerprintHandler(w http.ResponseWriter, r *http.Request) {
+	if armoredPublicKey, ok := getKeyByFingerprint(w, r); ok {
+		responseData := v1structs.GetPublicKeyResponse{
+			ArmoredPublicKey: armoredPublicKey,
+		}
+		writeJsonResponse(w, responseData)
+	}
+}
+
+// getKeyByFingerprint finds and returns an armored key for the given request, or if there's an
+// error, writes out an error response to w.
+// Returns armored key, success
+func getKeyByFingerprint(w http.ResponseWriter, r *http.Request) (string, bool) {
+	fingerprint, err := fingerprint.Parse(mux.Vars(r)["fingerprint"])
+
+	if err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
+		return "", false
+	}
+
+	armoredPublicKey, found, err := datastore.GetArmoredPublicKeyForFingerprint(fingerprint)
+	if err != nil {
+		writeJsonError(w, err, http.StatusInternalServerError)
+		return "", false
+	} else if !found {
+		writeJsonError(
+			w,
+			fmt.Errorf("fingerprint looked valid, but no public key found for '%s'",
+				fingerprint,
+			),
+			http.StatusNotFound,
+		)
+		return "", false
+	}
+	return armoredPublicKey, true
 }
 
 func upsertPublicKeyHandler(w http.ResponseWriter, r *http.Request) {

@@ -16,6 +16,7 @@ import (
 	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/gofrs/uuid"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -62,7 +63,7 @@ func TestPingEndpoint(t *testing.T) {
 	})
 }
 
-func TestGetPublicKeyHandler(t *testing.T) {
+func TestGetPublicKeyByEmailHandler(t *testing.T) {
 	assert.ErrorIsNil(t,
 		datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4),
 	)
@@ -99,6 +100,54 @@ func TestGetPublicKeyHandler(t *testing.T) {
 		response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
 		assertStatusCode(t, http.StatusOK, response.Code)
 	})
+}
+
+func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
+	assert.ErrorIsNil(t,
+		datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4),
+	)
+
+	t.Run("JSON endpoint", func(t *testing.T) {
+		t.Run("with no matching fingerprint", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex())
+
+			assertStatusCode(t, http.StatusNotFound, response.Code)
+			assertHasJsonErrorDetail(t, response.Body,
+				"fingerprint looked valid, but no public key found for "+
+					"'7C18 DE4D E478 1356 8B24  3AC8 719B D63E F03B DC20'")
+		})
+
+		t.Run("with a matching fingerprint", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex())
+			assertStatusCode(t, http.StatusOK, response.Code)
+
+			responseData := v1structs.GetPublicKeyResponse{}
+			assertBodyDecodesInto(t, response.Body, &responseData)
+			assert.Equal(t, responseData.ArmoredPublicKey, exampledata.ExamplePublicKey4)
+		})
+	})
+
+	t.Run("ascii-armored endpoint", func(t *testing.T) {
+		t.Run("with no matching fingerprint", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex()+".asc")
+
+			assertStatusCode(t, http.StatusNotFound, response.Code)
+			assertHasJsonErrorDetail(t, response.Body,
+				"fingerprint looked valid, but no public key found for "+
+					"'7C18 DE4D E478 1356 8B24  3AC8 719B D63E F03B DC20'")
+		})
+
+		t.Run("with a matching fingerprint", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex()+".asc")
+			assertStatusCode(t, http.StatusOK, response.Code)
+
+			body, err := ioutil.ReadAll(response.Body)
+			assert.ErrorIsNil(t, err)
+
+			assert.Equal(t, string(body), exampledata.ExamplePublicKey4)
+		})
+	})
+
 }
 
 func TestUpsertPublicKeyHandler(t *testing.T) {
