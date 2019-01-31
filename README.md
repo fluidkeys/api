@@ -5,7 +5,7 @@
 Get a verified OpenPGP public key for the email address:
 
 ```
-GET /emails/:email/key
+GET /email/:email/key
 ```
 
 ### Parameters
