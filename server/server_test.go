@@ -101,6 +101,11 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 			response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
+
+		t.Run("with uppercase query for lowercase email", func(t *testing.T) {
+			response := callApi(t, "GET", "/v1/email/TEST4@example.com/key")
+			assertStatusCode(t, http.StatusOK, response.Code)
+		})
 	})
 
 	t.Run("ascii-armored endpoint", func(t *testing.T) {

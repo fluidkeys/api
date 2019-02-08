@@ -66,4 +66,8 @@ var migrateDatabaseStatements = []string{
                 verify_user_agent TEXT,
                 verify_ip_address INET
     )`,
+
+	`CREATE EXTENSION IF NOT EXISTS citext`,
+
+	`ALTER TABLE email_key_link ALTER COLUMN email TYPE citext`,
 }
