@@ -7,6 +7,7 @@ import (
 	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/gofrs/uuid"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -135,8 +136,8 @@ func GetArmoredPublicKeyForEmail(txn *sql.Tx, email string) (
 		return "", false, err
 	}
 
-	if email != gotEmail {
-		panic(fmt.Errorf("queried for '%s', got back '%s'", email, gotEmail))
+	if strings.ToLower(email) != strings.ToLower(gotEmail) {
+		return "", false, fmt.Errorf("queried for '%s', got back '%s'", email, gotEmail)
 	}
 
 	return armoredPublicKey, true, nil
