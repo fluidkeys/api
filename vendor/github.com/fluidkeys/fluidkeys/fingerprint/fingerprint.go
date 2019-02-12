@@ -1,8 +1,26 @@
+// Copyright 2018 Paul Furley and Ian Drysdale
+//
+// This file is part of Fluidkeys Client which makes it simple to use OpenPGP.
+//
+// Fluidkeys Client is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Fluidkeys Client is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with Fluidkeys Client.  If not, see <https://www.gnu.org/licenses/>.
+
 package fingerprint
 
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 )
@@ -42,11 +60,11 @@ func Parse(fp string) (Fingerprint, error) {
 }
 
 // MustParse takes a string and returns a Fingerprint. If the
-// string is not a valid fingerprint (e.g. 40 hex characters) it will panic.
+// string is not a valid fingerprint (e.g. 40 hex characters) it will log.Panic.
 func MustParse(fp string) Fingerprint {
 	result, err := Parse(fp)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return result
 }
@@ -119,6 +137,6 @@ func (f Fingerprint) IsSet() bool {
 
 func (f Fingerprint) assertIsSet() {
 	if !f.IsSet() {
-		panic(fmt.Errorf("Fingerprint.String() called when fingerprint hasn't been set."))
+		log.Panic("Fingerprint.String() called when fingerprint hasn't been set.")
 	}
 }

@@ -19,10 +19,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d8b82b337e9f99c31a88b0fec8e8c6de6e6d28859016e88899edb064d5c85d37"
+  digest = "1:49071054679adf04c27f3bfcd744d535edb5ab51b4e987b1690a12c8ecbc77bc"
   name = "github.com/fluidkeys/fluidkeys"
   packages = [
     "assert",
+    "emailutils",
     "exampledata",
     "fingerprint",
     "openpgpdefs/compression",
@@ -32,7 +33,7 @@
     "policy",
   ]
   pruneopts = "UT"
-  revision = "056465c9909fe3318a93b8a4b283b04ecb194f9b"
+  revision = "2ede94996d5c6eb0c0dcef251a835bac62c55610"
 
 [[projects]]
   digest = "1:c594a691090b434d55c67f6cc8e326ef5ba49452abc059821bd5d4fd4cdef08c"

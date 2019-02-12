@@ -1,3 +1,20 @@
+// Copyright 2018 Paul Furley and Ian Drysdale
+//
+// This file is part of Fluidkeys Client which makes it simple to use OpenPGP.
+//
+// Fluidkeys Client is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Fluidkeys Client is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with Fluidkeys Client.  If not, see <https://www.gnu.org/licenses/>.
+
 package pgpkey
 
 import (
@@ -15,6 +32,7 @@ import (
 	"github.com/fluidkeys/crypto/openpgp"
 	"github.com/fluidkeys/crypto/openpgp/armor"
 	"github.com/fluidkeys/crypto/openpgp/packet"
+	"github.com/fluidkeys/fluidkeys/emailutils"
 	"github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/openpgpdefs/compression"
 	"github.com/fluidkeys/fluidkeys/openpgpdefs/hash"
@@ -342,21 +360,42 @@ func (key *PgpKey) Emails(allowUnbracketed bool) []string {
 			sortedEmails = append(sortedEmails, email)
 		}
 	}
-	return sortedEmails
+	return deduplicateEmails(sortedEmails)
 }
 
 func getEmail(identity *openpgp.Identity, allowUnbracketed bool) (string, bool) {
-	if email := identity.UserId.Email; roughlyValidateEmail(email) {
+	if email := identity.UserId.Email; emailutils.RoughlyValidateEmail(email) {
 		return identity.UserId.Email, true
 
-	} else if email == "" && allowUnbracketed && roughlyValidateEmail(identity.UserId.Id) {
+	} else if email == "" && allowUnbracketed && emailutils.RoughlyValidateEmail(identity.UserId.Id) {
 		return identity.UserId.Id, true
 	}
 	return "", false
 }
 
-func roughlyValidateEmail(email string) bool {
-	return strings.Contains(email, "@")
+// deduplicateEmails takes a slice of email addresses and returns a slice with duplicates removed.
+// A duplicate is defined as being identical when lower-cased.
+// Order is preserved: the *first* instance of a dupe will be returned first, e.g.
+//
+// [a@example.com, A@example.com,  B@example.com, b@example.com] returns
+// [a@example.com, B@example.com]
+func deduplicateEmails(emails []string) []string {
+	normalize := func(email string) string { return strings.ToLower(email) }
+
+	emailsSeen := map[string]bool{}
+	deduplicated := []string{}
+
+	for _, verbatimEmail := range emails {
+		normalizedEmail := normalize(verbatimEmail)
+
+		if _, seen := emailsSeen[normalizedEmail]; !seen {
+			emailsSeen[normalizedEmail] = true
+
+			deduplicated = append(deduplicated, verbatimEmail)
+		}
+	}
+
+	return deduplicated
 }
 
 func (key *PgpKey) Fingerprint() fingerprint.Fingerprint {
