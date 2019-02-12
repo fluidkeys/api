@@ -1,4 +1,4 @@
-// Copyright 2018 Paul Furley and Ian Drysdale
+// Copyright 2019 Paul Furley and Ian Drysdale
 //
 // This file is part of Fluidkeys Client which makes it simple to use OpenPGP.
 //
@@ -15,13 +15,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Fluidkeys Client.  If not, see <https://www.gnu.org/licenses/>.
 
-package pgpkey
+package emailutils
 
-type LoadFromArmoredEncryptedPrivateKeyInterface interface {
-	LoadFromArmoredEncryptedPrivateKey(string, string) (*PgpKey, error)
-}
+import "strings"
 
-type ArmorInterface interface {
-	Armor() (string, error)
-	ArmorPrivate(string) (string, error)
+// RoughlyValidateEmail checks whether a given string contains an @, a rough
+// check as to whether it's an email address or not.
+func RoughlyValidateEmail(email string) bool {
+	return strings.Contains(email, "@")
 }
