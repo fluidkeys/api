@@ -473,8 +473,8 @@ func TestSendSecretHandler(t *testing.T) {
 		// 	"secret is encryped to a different key")
 	})
 
-	t.Run("armoredEncryptedSecret longer then 10K", func(t *testing.T) {
-		const msgLength int = 11 * 1024
+	t.Run("armoredEncryptedSecret longer then 20K", func(t *testing.T) {
+		const msgLength int = 21 * 1024
 		const letter rune = 'a'
 		runes := make([]rune, msgLength)
 
@@ -491,7 +491,8 @@ func TestSendSecretHandler(t *testing.T) {
 		response := callApiWithJson(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJsonErrorDetail(t, response.Body,
-			"invalid `armoredEncryptedSecret`: secrets currently have a max size of 10K")
+			"invalid `armoredEncryptedSecret`: secrets currently have a "+
+				"max size of 10240 bytes")
 	})
 
 	teardown()

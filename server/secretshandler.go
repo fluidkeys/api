@@ -9,6 +9,7 @@ import (
 	"github.com/fluidkeys/crypto/openpgp/packet"
 	"github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
+	"github.com/fluidkeys/fluidkeys/policy"
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -166,8 +167,9 @@ func validateSecret(armoredEncryptedSecret string, recipientFingerprint fingerpr
 		return fmt.Errorf("error decoding ASCII armor: %s", err)
 	}
 
-	if len(armoredEncryptedSecret) > 10*1024 {
-		return fmt.Errorf("secrets currently have a max size of 10K")
+	if len(armoredEncryptedSecret) > 2*policy.SecretMaxSizeBytes {
+		return fmt.Errorf("secrets currently have a max size of %d bytes",
+			policy.SecretMaxSizeBytes)
 	}
 
 	pkt1, err := packet.Read(block.Body)
