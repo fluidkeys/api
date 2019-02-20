@@ -477,6 +477,7 @@ func DropAllTheTables() error {
 		"email_key_link",
 		"secrets",
 		"keys",
+		"teams",
 	}
 
 	for _, table := range tablesToDrop {
