@@ -22,7 +22,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func getAsciiArmoredPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
+func getASCIIArmoredPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
 	if armoredPublicKey, ok := getKeyByEmail(w, r); ok {
 		fmt.Fprintf(w, armoredPublicKey)
 	}
@@ -37,7 +37,7 @@ func getPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getAsciiArmoredPublicKeyByFingerprintHandler(w http.ResponseWriter, r *http.Request) {
+func getASCIIArmoredPublicKeyByFingerprintHandler(w http.ResponseWriter, r *http.Request) {
 	if armoredPublicKey, ok := getKeyByFingerprint(w, r); ok {
 		fmt.Fprintf(w, armoredPublicKey)
 	}

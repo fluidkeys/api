@@ -15,10 +15,10 @@ import (
 
 var db *sql.DB
 
-// Initialize initialises a postgres database from the given databaseUrl
-func Initialize(databaseUrl string) error {
+// Initialize initialises a postgres database from the given databaseURL
+func Initialize(databaseURL string) error {
 	var err error
-	db, err = sql.Open("postgres", databaseUrl)
+	db, err = sql.Open("postgres", databaseURL)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func CreateVerification(
 		return nil, err
 	}
 
-	keyId, found, err := getKeyIdForFingerprint(txn, fp)
+	keyID, found, err := getKeyIDForFingerprint(txn, fp)
 
 	if err != nil {
 		return nil, err
@@ -202,7 +202,7 @@ func CreateVerification(
 	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
 	_, err = transactionOrDatabase(txn).Exec(
-		query, createdAt, validUntil, secretUUID, keyId, dbFormat(fp), email,
+		query, createdAt, validUntil, secretUUID, keyID, dbFormat(fp), email,
 		userAgent, ipAddress,
 	)
 	return &secretUUID, err
@@ -264,10 +264,10 @@ func HasActiveVerificationForEmail(txn *sql.Tx, email string) (bool, error) {
 	return count > 0, nil
 }
 
-func getKeyIdForFingerprint(txn *sql.Tx, fingerprint fpr.Fingerprint) (keyId int64, found bool, err error) {
+func getKeyIDForFingerprint(txn *sql.Tx, fingerprint fpr.Fingerprint) (keyID int64, found bool, err error) {
 	query := `SELECT keys.id FROM keys WHERE fingerprint=$1`
 
-	err = transactionOrDatabase(txn).QueryRow(query, dbFormat(fingerprint)).Scan(&keyId)
+	err = transactionOrDatabase(txn).QueryRow(query, dbFormat(fingerprint)).Scan(&keyID)
 	if err == sql.ErrNoRows {
 		return 0, false, nil // return found=false without an error
 
@@ -275,7 +275,7 @@ func getKeyIdForFingerprint(txn *sql.Tx, fingerprint fpr.Fingerprint) (keyId int
 		return 0, false, err
 	}
 
-	return keyId, true, nil
+	return keyID, true, nil
 }
 
 // CreateSecret stores the armoredEncryptedSecret (which must be encrypted to
@@ -286,7 +286,7 @@ func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret s
 		return nil, err
 	}
 
-	keyId, found, err := getKeyIdForFingerprint(nil, recipientFingerprint)
+	keyID, found, err := getKeyIDForFingerprint(nil, recipientFingerprint)
 
 	if err != nil {
 		return nil, err
@@ -305,7 +305,7 @@ func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret s
 
 	_, err = db.Exec(
 		query,
-		keyId,
+		keyID,
 		secretUUID,
 		createdAt,
 		armoredEncryptedSecret,
@@ -398,14 +398,14 @@ func StoreSingleUseNumber(txn *sql.Tx, singleUseUUID uuid.UUID, now time.Time) e
 	return err
 }
 
-func MustReadDatabaseUrl() string {
-	databaseUrl, present := os.LookupEnv("DATABASE_URL")
+func MustReadDatabaseURL() string {
+	databaseURL, present := os.LookupEnv("DATABASE_URL")
 
 	if !present {
 		panic("Missing DATABASE_URL, it should be e.g. " +
 			"postgres://vagrant:password@localhost:5432/vagrant")
 	}
-	return databaseUrl
+	return databaseURL
 }
 
 func Migrate() error {

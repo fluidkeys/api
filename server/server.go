@@ -21,7 +21,7 @@ func init() {
 	subrouter.HandleFunc("/email/verify/{uuid:"+uuid4Pattern+"}", verifyEmailHandler).Methods("GET", "POST")
 
 	subrouter.HandleFunc("/email/{email}/key", getPublicKeyByEmailHandler).Methods("GET")
-	subrouter.HandleFunc("/email/{email}/key.asc", getAsciiArmoredPublicKeyByEmailHandler).Methods("GET")
+	subrouter.HandleFunc("/email/{email}/key.asc", getASCIIArmoredPublicKeyByEmailHandler).Methods("GET")
 
 	subrouter.HandleFunc(
 		"/key/{fingerprint:"+v4FingerprintPattern+"}",
@@ -30,7 +30,7 @@ func init() {
 
 	subrouter.HandleFunc(
 		"/key/{fingerprint:"+v4FingerprintPattern+"}.asc",
-		getAsciiArmoredPublicKeyByFingerprintHandler,
+		getASCIIArmoredPublicKeyByFingerprintHandler,
 	).Methods("GET")
 
 	subrouter.HandleFunc("/keys", upsertPublicKeyHandler).Methods("POST")
@@ -40,8 +40,9 @@ func init() {
 	subrouter.HandleFunc("/secrets/{uuid:"+uuid4Pattern+"}", deleteSecretHandler).Methods("DELETE")
 }
 
+// Serve initializes the database and runs http.ListenAndServer
 func Serve() error {
-	err := datastore.Initialize(datastore.MustReadDatabaseUrl())
+	err := datastore.Initialize(datastore.MustReadDatabaseURL())
 	if err != nil {
 		panic(err)
 	}

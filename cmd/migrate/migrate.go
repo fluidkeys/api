@@ -8,7 +8,7 @@ import (
 func main() {
 	fmt.Print("Running database migrations.\n")
 
-	err := datastore.Initialize(datastore.MustReadDatabaseUrl())
+	err := datastore.Initialize(datastore.MustReadDatabaseURL())
 	if err != nil {
 		panic(err)
 	}

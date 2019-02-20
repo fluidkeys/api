@@ -26,8 +26,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if testDatabaseUrl, got := os.LookupEnv("TEST_DATABASE_URL"); got {
-		datastore.Initialize(testDatabaseUrl)
+	if testDatabaseURL, got := os.LookupEnv("TEST_DATABASE_URL"); got {
+		datastore.Initialize(testDatabaseURL)
 	} else {
 		panic("TEST_DATABASE_URL not set")
 	}
@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 
 func TestPingEndpoint(t *testing.T) {
 	t.Run("test ping endpoint", func(t *testing.T) {
-		mockResponse := callApi(t, "GET", "/v1/ping/foo")
+		mockResponse := callAPI(t, "GET", "/v1/ping/foo")
 
 		assertStatusCode(t, http.StatusOK, mockResponse.Code)
 
@@ -76,15 +76,15 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 
 	t.Run("JSON endpoint", func(t *testing.T) {
 		t.Run("with no match on email", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/email/missing@example.com/key")
+			response := callAPI(t, "GET", "/v1/email/missing@example.com/key")
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
-			assertHasJsonErrorDetail(t, response.Body,
+			assertHasJSONErrorDetail(t, response.Body,
 				"couldn't find a public key for email address 'missing@example.com'")
 		})
 
 		t.Run("with match on email", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/email/test4@example.com/key")
+			response := callAPI(t, "GET", "/v1/email/test4@example.com/key")
 			assertStatusCode(t, http.StatusOK, response.Code)
 
 			responseData := v1structs.GetPublicKeyResponse{}
@@ -93,43 +93,43 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 		})
 
 		t.Run("with + in email, request not urlencoded", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/email/test4+foo@example.com/key")
+			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key")
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
 		t.Run("with + in email, request urlencoded", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
+			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
 		t.Run("with uppercase query for lowercase email", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/email/TEST4@example.com/key")
+			response := callAPI(t, "GET", "/v1/email/TEST4@example.com/key")
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 	})
 
 	t.Run("ascii-armored endpoint", func(t *testing.T) {
 		t.Run("with no match on email", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/email/missing@example.com/key.asc")
+			response := callAPI(t, "GET", "/v1/email/missing@example.com/key.asc")
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
-			assertHasJsonErrorDetail(t, response.Body,
+			assertHasJSONErrorDetail(t, response.Body,
 				"couldn't find a public key for email address 'missing@example.com'")
 		})
 
 		t.Run("with match on email", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/email/test4@example.com/key.asc")
+			response := callAPI(t, "GET", "/v1/email/test4@example.com/key.asc")
 			assertStatusCode(t, http.StatusOK, response.Code)
 			assertBodyEqualTo(t, response.Body, exampledata.ExamplePublicKey4)
 		})
 
 		t.Run("with + in email, request not urlencoded", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/email/test4+foo@example.com/key.asc")
+			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key.asc")
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
 		t.Run("with + in email, request urlencoded", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key.asc")
+			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key.asc")
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 	})
@@ -142,16 +142,16 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 
 	t.Run("JSON endpoint", func(t *testing.T) {
 		t.Run("with no matching fingerprint", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex())
+			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex())
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
-			assertHasJsonErrorDetail(t, response.Body,
+			assertHasJSONErrorDetail(t, response.Body,
 				"fingerprint looked valid, but no public key found for "+
 					"'7C18 DE4D E478 1356 8B24  3AC8 719B D63E F03B DC20'")
 		})
 
 		t.Run("with a matching fingerprint", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex())
+			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex())
 			assertStatusCode(t, http.StatusOK, response.Code)
 
 			responseData := v1structs.GetPublicKeyResponse{}
@@ -162,16 +162,16 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 
 	t.Run("ascii-armored endpoint", func(t *testing.T) {
 		t.Run("with no matching fingerprint", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex()+".asc")
+			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex()+".asc")
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
-			assertHasJsonErrorDetail(t, response.Body,
+			assertHasJSONErrorDetail(t, response.Body,
 				"fingerprint looked valid, but no public key found for "+
 					"'7C18 DE4D E478 1356 8B24  3AC8 719B D63E F03B DC20'")
 		})
 
 		t.Run("with a matching fingerprint", func(t *testing.T) {
-			response := callApi(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex()+".asc")
+			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex()+".asc")
 			assertStatusCode(t, http.StatusOK, response.Code)
 
 			assertBodyEqualTo(t, response.Body, exampledata.ExamplePublicKey4)
@@ -282,7 +282,7 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 				validSha256),
 		}
 
-		response := callApiWithJson(t, "POST", "/v1/keys", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/keys", requestData)
 		fmt.Print(response.Body)
 		assertStatusCode(t, http.StatusOK, response.Code)
 
@@ -335,7 +335,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callApiWithJson(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusCreated, response.Code)
 	})
 
@@ -347,7 +347,7 @@ func TestSendSecretHandler(t *testing.T) {
 		subrouter.ServeHTTP(response, req)
 
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"expecting header Content-Type: application/json")
 	})
 
@@ -361,7 +361,7 @@ func TestSendSecretHandler(t *testing.T) {
 		subrouter.ServeHTTP(response, req)
 
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"expecting header Content-Type: application/json")
 	})
 
@@ -375,7 +375,7 @@ func TestSendSecretHandler(t *testing.T) {
 		subrouter.ServeHTTP(response, req)
 
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body, "empty request body")
+		assertHasJSONErrorDetail(t, response.Body, "empty request body")
 	})
 
 	t.Run("invalid JSON", func(t *testing.T) {
@@ -388,7 +388,7 @@ func TestSendSecretHandler(t *testing.T) {
 		subrouter.ServeHTTP(response, req)
 
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"invalid JSON: invalid character 'i' looking for beginning of value")
 	})
 
@@ -398,9 +398,9 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callApiWithJson(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `recipientFingerprint`: missing prefix OPENPGP4FPR:")
 	})
 
@@ -410,9 +410,9 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callApiWithJson(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `recipientFingerprint`: missing prefix OPENPGP4FPR:")
 	})
 
@@ -422,9 +422,9 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callApiWithJson(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body, "no key found for fingerprint")
+		assertHasJSONErrorDetail(t, response.Body, "no key found for fingerprint")
 	})
 
 	t.Run("empty armoredEncryptedSecret", func(t *testing.T) {
@@ -433,9 +433,9 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: "",
 		}
 
-		response := callApiWithJson(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: empty string")
 	})
 
@@ -445,9 +445,9 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: "bad ASCII armor",
 		}
 
-		response := callApiWithJson(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: error decoding ASCII armor: EOF")
 	})
 
@@ -466,7 +466,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		callApiWithJson(t, "POST", "/v1/secrets", requestData)
+		callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		// TODO: would be nice one day to test this.
 		// assertStatusCode(t, http.StatusBadRequest, response.Code)
 		// assertHasJsonErrorDetail(t, response.Body,
@@ -488,9 +488,9 @@ func TestSendSecretHandler(t *testing.T) {
 		requestData.ArmoredEncryptedSecret, err = encryptStringToArmor(string(runes), key)
 		assert.ErrorIsNil(t, err)
 
-		response := callApiWithJson(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: secrets currently have a "+
 				"max size of 10240 bytes")
 	})
@@ -540,7 +540,7 @@ func TestListSecretsHandler(t *testing.T) {
 		subrouter.ServeHTTP(response, req)
 
 		assertStatusCode(t, http.StatusUnauthorized, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
 	})
 
@@ -552,7 +552,7 @@ func TestListSecretsHandler(t *testing.T) {
 		subrouter.ServeHTTP(response, req)
 
 		assertStatusCode(t, http.StatusUnauthorized, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
 	})
 
@@ -568,7 +568,7 @@ func TestListSecretsHandler(t *testing.T) {
 		subrouter.ServeHTTP(response, req)
 
 		assertStatusCode(t, http.StatusUnauthorized, response.Code)
-		assertHasJsonErrorDetail(t, response.Body, "invalid authorization")
+		assertHasJSONErrorDetail(t, response.Body, "invalid authorization")
 	})
 
 	t.Run("valid request with no secrets", func(t *testing.T) {
@@ -694,7 +694,7 @@ func TestDeleteSecretHandler(t *testing.T) {
 		subrouter.ServeHTTP(response, req)
 
 		assertStatusCode(t, http.StatusUnauthorized, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
 	})
 
@@ -706,7 +706,7 @@ func TestDeleteSecretHandler(t *testing.T) {
 		subrouter.ServeHTTP(response, req)
 
 		assertStatusCode(t, http.StatusUnauthorized, response.Code)
-		assertHasJsonErrorDetail(t, response.Body,
+		assertHasJSONErrorDetail(t, response.Body,
 			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
 	})
 
@@ -733,7 +733,7 @@ func TestDeleteSecretHandler(t *testing.T) {
 	teardown()
 }
 
-func callApi(t *testing.T, method string, path string) *httptest.ResponseRecorder {
+func callAPI(t *testing.T, method string, path string) *httptest.ResponseRecorder {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	t.Helper()
@@ -749,7 +749,7 @@ func callApi(t *testing.T, method string, path string) *httptest.ResponseRecorde
 	return recorder
 }
 
-func callApiWithJson(t *testing.T, method string, path string, requestData interface{}) *httptest.ResponseRecorder {
+func callAPIWithJSON(t *testing.T, method string, path string, requestData interface{}) *httptest.ResponseRecorder {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	t.Helper()
@@ -787,7 +787,7 @@ func assertStatusCode(t *testing.T, expected int, got int) {
 	}
 }
 
-func assertHasJsonErrorDetail(t *testing.T, body io.Reader, expectedDetail string) {
+func assertHasJSONErrorDetail(t *testing.T, body io.Reader, expectedDetail string) {
 	t.Helper()
 	errorResponse := v1structs.ErrorResponse{}
 	if err := json.NewDecoder(body).Decode(&errorResponse); err != nil {
