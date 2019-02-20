@@ -150,7 +150,7 @@ func getAuthorizedUserPublicKey(r *http.Request) (*pgpkey.PgpKey, error) {
 
 func parseFingerprint(fp string) (*fingerprint.Fingerprint, error) {
 	if !strings.HasPrefix(fp, "OPENPGP4FPR:") {
-		return nil, fmt.Errorf("missing prefix OPENPGP4FPR:")
+		return nil, fmt.Errorf("missing prefix `OPENPGP4FPR:`")
 	}
 
 	fpr, err := fingerprint.Parse(fp[12:])

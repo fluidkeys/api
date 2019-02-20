@@ -401,7 +401,7 @@ func TestSendSecretHandler(t *testing.T) {
 		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
-			"invalid `recipientFingerprint`: missing prefix OPENPGP4FPR:")
+			"invalid `recipientFingerprint`: missing prefix `OPENPGP4FPR:`")
 	})
 
 	t.Run("malformed recipientFingerprint", func(t *testing.T) {
@@ -413,7 +413,7 @@ func TestSendSecretHandler(t *testing.T) {
 		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
-			"invalid `recipientFingerprint`: missing prefix OPENPGP4FPR:")
+			"invalid `recipientFingerprint`: missing prefix `OPENPGP4FPR:`")
 	})
 
 	t.Run("recipientFingerprint not in the database", func(t *testing.T) {
