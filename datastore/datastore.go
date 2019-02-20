@@ -28,6 +28,7 @@ func Initialize(databaseURL string) error {
 	return nil
 }
 
+// Ping tests the database and returns an error if there's a problem
 func Ping() error {
 	return db.Ping()
 }
@@ -117,6 +118,8 @@ func LinkEmailToFingerprint(txn *sql.Tx, email string, fingerprint fpr.Fingerpri
 	return err
 }
 
+// GetArmoredPublicKeyForEmail returns an ASCII-armored public key for the given email, if the
+// email address has been verified.
 func GetArmoredPublicKeyForEmail(txn *sql.Tx, email string) (
 	armoredPublicKey string, found bool, err error) {
 
@@ -143,6 +146,8 @@ func GetArmoredPublicKeyForEmail(txn *sql.Tx, email string) (
 	return armoredPublicKey, true, nil
 }
 
+// GetArmoredPublicKeyForFingerprint returns an ASCII-armored public key for the given fingerprint,
+// regardless of whether the email addresses in the key have been verified.
 func GetArmoredPublicKeyForFingerprint(fingerprint fpr.Fingerprint) (armoredPublicKey string, found bool, err error) {
 	query := `SELECT keys.armored_public_key
 		  FROM keys
@@ -316,6 +321,7 @@ func CreateSecret(recipientFingerprint fpr.Fingerprint, armoredEncryptedSecret s
 	return &secretUUID, nil
 }
 
+// GetSecrets returns a slice of secrets for the given public key fingerprint
 func GetSecrets(recipientFingerprint fpr.Fingerprint) ([]*secret, error) {
 	secrets := make([]*secret, 0)
 
@@ -347,6 +353,8 @@ func GetSecrets(recipientFingerprint fpr.Fingerprint) ([]*secret, error) {
 	return secrets, nil
 }
 
+// DeleteSecret deletes the given secret (by UUID) if the recipientFingerprint matches the secret,
+// or returns an error if not.
 func DeleteSecret(secretUUID uuid.UUID, recipientFingerprint fpr.Fingerprint) (found bool, err error) {
 	query := `DELETE FROM secrets
 	          USING keys
@@ -371,6 +379,8 @@ func DeleteSecret(secretUUID uuid.UUID, recipientFingerprint fpr.Fingerprint) (f
 	return true, nil // found and deleted
 }
 
+// VerifySingleUseNumberNotStored returns an error if the given singleUseUUID already exists in
+// the database
 func VerifySingleUseNumberNotStored(singleUseUUID uuid.UUID) error {
 	query := `SELECT COUNT(uuid) FROM single_use_uuids WHERE uuid=$1`
 
@@ -398,6 +408,8 @@ func StoreSingleUseNumber(txn *sql.Tx, singleUseUUID uuid.UUID, now time.Time) e
 	return err
 }
 
+// MustReadDatabaseURL returns the value of DATABASE_URL from the environment or panics if it
+// wasn't found
 func MustReadDatabaseURL() string {
 	databaseURL, present := os.LookupEnv("DATABASE_URL")
 
@@ -408,6 +420,7 @@ func MustReadDatabaseURL() string {
 	return databaseURL
 }
 
+// Migrate runs all the database migration queries (create table etc)
 func Migrate() error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -441,6 +454,9 @@ func currentDatabaseName() (string, error) {
 	return databaseName, nil
 }
 
+// DropAllTheTables drops all the tables in the database. It's intendeded only for use in
+// development, so before doing anything it checks that the current database is called
+// `fkapi_test` or `travis`
 func DropAllTheTables() error {
 	dbName, err := currentDatabaseName()
 	if err != nil {
