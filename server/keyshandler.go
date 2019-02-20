@@ -241,11 +241,11 @@ func validateSignedData(
 func generateAndEncryptPassword(publicKey *pgpkey.PgpKey) (
 	newPassword string, encrypted string, err error) {
 
-	if newUUID, err := uuid.NewV4(); err != nil {
+	newUUID, err := uuid.NewV4()
+	if err != nil {
 		return "", "", fmt.Errorf("error making UUID: %v", err)
-	} else {
-		newPassword = newUUID.String()
 	}
+	newPassword = newUUID.String()
 
 	encryptedPassword, err := encryptStringToArmor(newPassword, publicKey)
 	if err != nil {

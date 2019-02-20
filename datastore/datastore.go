@@ -491,9 +491,8 @@ func DropAllTheTables() error {
 func transactionOrDatabase(txn *sql.Tx) txDbInterface {
 	if txn != nil {
 		return txn
-	} else {
-		return db
 	}
+	return db
 }
 
 // txDbInterface allows a *sql.DB and a *sql.Tx to be used interchangeably
