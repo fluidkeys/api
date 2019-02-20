@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	// required rename for SQL
 	_ "github.com/lib/pq"
 )
 
