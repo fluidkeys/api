@@ -1,4 +1,5 @@
 .vagrant/*
 .secrets.sh
+/api.log
 
 *-cloudimg-console.log
