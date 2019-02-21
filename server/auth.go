@@ -36,7 +36,7 @@ func getAuthorizedUserPublicKey(r *http.Request) (*pgpkey.PgpKey, error) {
 	if err != nil {
 		return nil, err
 	} else if !found {
-		return nil, fmt.Errorf("invalid authorization")
+		return nil, errAuthKeyNotFound
 	}
 
 	key, err := pgpkey.LoadFromArmoredPublicKey(armoredPublicKey)
@@ -47,3 +47,5 @@ func getAuthorizedUserPublicKey(r *http.Request) (*pgpkey.PgpKey, error) {
 
 	return key, nil
 }
+
+var errAuthKeyNotFound = fmt.Errorf("invalid authorization")
