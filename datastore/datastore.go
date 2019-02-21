@@ -119,6 +119,23 @@ func LinkEmailToFingerprint(txn *sql.Tx, email string, fingerprint fpr.Fingerpri
 	return err
 }
 
+// QueryEmailVerifiedForFingerprint returns true if the given email is verified for the given
+// fingerprint.
+func QueryEmailVerifiedForFingerprint(txn *sql.Tx, email string, fingerprint fpr.Fingerprint) (bool, error) {
+	query := `SELECT COUNT(*)
+              FROM email_key_link
+			  WHERE email=$1
+			  AND key_id=(SELECT id FROM keys WHERE fingerprint=$2)`
+
+	var count int
+	err := transactionOrDatabase(txn).QueryRow(query, email, dbFormat(fingerprint)).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
 // GetArmoredPublicKeyForEmail returns an ASCII-armored public key for the given email, if the
 // email address has been verified.
 func GetArmoredPublicKeyForEmail(txn *sql.Tx, email string) (
