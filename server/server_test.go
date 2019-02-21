@@ -282,7 +282,7 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 				validSha256),
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/keys", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/keys", requestData, nil)
 		fmt.Print(response.Body)
 		assertStatusCode(t, http.StatusOK, response.Code)
 
@@ -335,7 +335,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusCreated, response.Code)
 	})
 
@@ -398,7 +398,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `recipientFingerprint`: missing prefix `OPENPGP4FPR:`")
@@ -410,7 +410,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `recipientFingerprint`: missing prefix `OPENPGP4FPR:`")
@@ -422,7 +422,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body, "no key found for fingerprint")
 	})
@@ -433,7 +433,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: "",
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: empty string")
@@ -445,7 +445,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: "bad ASCII armor",
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: error decoding ASCII armor: EOF")
@@ -466,7 +466,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		// TODO: would be nice one day to test this.
 		// assertStatusCode(t, http.StatusBadRequest, response.Code)
 		// assertHasJsonErrorDetail(t, response.Body,
@@ -488,7 +488,7 @@ func TestSendSecretHandler(t *testing.T) {
 		requestData.ArmoredEncryptedSecret, err = encryptStringToArmor(string(runes), key)
 		assert.ErrorIsNil(t, err)
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: secrets currently have a "+
@@ -749,7 +749,9 @@ func callAPI(t *testing.T, method string, path string) *httptest.ResponseRecorde
 	return recorder
 }
 
-func callAPIWithJSON(t *testing.T, method string, path string, requestData interface{}) *httptest.ResponseRecorder {
+func callAPIWithJSON(t *testing.T, method string, path string,
+	requestData interface{}, authFingerprint *fingerprint.Fingerprint) *httptest.ResponseRecorder {
+
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	t.Helper()
@@ -769,9 +771,13 @@ func callAPIWithJSON(t *testing.T, method string, path string, requestData inter
 	}
 
 	req, err := http.NewRequest(method, path, body)
-	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if authFingerprint != nil {
+		req.Header.Set("Authorization", fmt.Sprintf("tmpfingerprint: %s", authFingerprint.Uri()))
 	}
 
 	recorder := httptest.NewRecorder() // create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
