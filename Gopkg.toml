@@ -38,5 +38,7 @@
   version = "1.0.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/fluidkeys/fluidkeys"
+
+  # run `dep ensure` after editing this to updte vendor
+  revision = "4142a39604588a290082bcead5eb53b7c9759da4"
