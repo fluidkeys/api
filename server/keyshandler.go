@@ -22,7 +22,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func getAsciiArmoredPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
+func getASCIIArmoredPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
 	if armoredPublicKey, ok := getKeyByEmail(w, r); ok {
 		fmt.Fprintf(w, armoredPublicKey)
 	}
@@ -37,7 +37,7 @@ func getPublicKeyByEmailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getAsciiArmoredPublicKeyByFingerprintHandler(w http.ResponseWriter, r *http.Request) {
+func getASCIIArmoredPublicKeyByFingerprintHandler(w http.ResponseWriter, r *http.Request) {
 	if armoredPublicKey, ok := getKeyByFingerprint(w, r); ok {
 		fmt.Fprintf(w, armoredPublicKey)
 	}
@@ -241,11 +241,11 @@ func validateSignedData(
 func generateAndEncryptPassword(publicKey *pgpkey.PgpKey) (
 	newPassword string, encrypted string, err error) {
 
-	if newUUID, err := uuid.NewV4(); err != nil {
+	newUUID, err := uuid.NewV4()
+	if err != nil {
 		return "", "", fmt.Errorf("error making UUID: %v", err)
-	} else {
-		newPassword = newUUID.String()
 	}
+	newPassword = newUUID.String()
 
 	encryptedPassword, err := encryptStringToArmor(newPassword, publicKey)
 	if err != nil {
