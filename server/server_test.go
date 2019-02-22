@@ -220,8 +220,6 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 
 	setup()
 
-	// TODO: content header tests etc
-
 	t.Run("bad (truncated) signature", func(t *testing.T) {
 		goodSig := makeSignedData(t, now, uuid1.String(), validSha256)
 
@@ -271,6 +269,8 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 		assert.Equal(t, "bad SingleUseUUID: single use UUID already used", err.Error())
 	})
 
+	testEndpointRejectsBadJSON(t, "POST", "/v1/keys")
+
 	t.Run("valid signed data, brand new key", func(t *testing.T) {
 
 		requestData := v1structs.UpsertPublicKeyRequest{
@@ -282,7 +282,7 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 				validSha256),
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/keys", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/keys", requestData, nil)
 		fmt.Print(response.Body)
 		assertStatusCode(t, http.StatusOK, response.Code)
 
@@ -335,62 +335,11 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusCreated, response.Code)
 	})
 
-	t.Run("request missing content-type header", func(t *testing.T) {
-		req, err := http.NewRequest("POST", "/v1/secrets", nil)
-		assert.ErrorIsNil(t, err)
-
-		response := httptest.NewRecorder()
-		subrouter.ServeHTTP(response, req)
-
-		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJSONErrorDetail(t, response.Body,
-			"expecting header Content-Type: application/json")
-	})
-
-	t.Run("request content-type header isn't application/json", func(t *testing.T) {
-		req, err := http.NewRequest("POST", "/v1/secrets", nil)
-		assert.ErrorIsNil(t, err)
-
-		req.Header.Set("Content-Type", "multipart/form-data")
-
-		response := httptest.NewRecorder()
-		subrouter.ServeHTTP(response, req)
-
-		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJSONErrorDetail(t, response.Body,
-			"expecting header Content-Type: application/json")
-	})
-
-	t.Run("empty request body", func(t *testing.T) {
-		req, err := http.NewRequest("POST", "/v1/secrets", nil)
-		assert.ErrorIsNil(t, err)
-
-		req.Header.Set("Content-Type", "application/json")
-
-		response := httptest.NewRecorder()
-		subrouter.ServeHTTP(response, req)
-
-		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJSONErrorDetail(t, response.Body, "empty request body")
-	})
-
-	t.Run("invalid JSON", func(t *testing.T) {
-		req, err := http.NewRequest("POST", "/v1/secrets", strings.NewReader("invalid json"))
-		assert.ErrorIsNil(t, err)
-
-		req.Header.Set("Content-Type", "application/json")
-
-		response := httptest.NewRecorder()
-		subrouter.ServeHTTP(response, req)
-
-		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJSONErrorDetail(t, response.Body,
-			"invalid JSON: invalid character 'i' looking for beginning of value")
-	})
+	testEndpointRejectsBadJSON(t, "POST", "/v1/keys")
 
 	t.Run("empty recipientFingerprint", func(t *testing.T) {
 		requestData := v1structs.SendSecretRequest{
@@ -398,7 +347,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `recipientFingerprint`: missing prefix `OPENPGP4FPR:`")
@@ -410,7 +359,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `recipientFingerprint`: missing prefix `OPENPGP4FPR:`")
@@ -422,7 +371,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body, "no key found for fingerprint")
 	})
@@ -433,7 +382,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: "",
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: empty string")
@@ -445,7 +394,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: "bad ASCII armor",
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: error decoding ASCII armor: EOF")
@@ -466,7 +415,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		// TODO: would be nice one day to test this.
 		// assertStatusCode(t, http.StatusBadRequest, response.Code)
 		// assertHasJsonErrorDetail(t, response.Body,
@@ -488,7 +437,7 @@ func TestSendSecretHandler(t *testing.T) {
 		requestData.ArmoredEncryptedSecret, err = encryptStringToArmor(string(runes), key)
 		assert.ErrorIsNil(t, err)
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData)
+		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: secrets currently have a "+
@@ -749,7 +698,9 @@ func callAPI(t *testing.T, method string, path string) *httptest.ResponseRecorde
 	return recorder
 }
 
-func callAPIWithJSON(t *testing.T, method string, path string, requestData interface{}) *httptest.ResponseRecorder {
+func callAPIWithJSON(t *testing.T, method string, path string,
+	requestData interface{}, authFingerprint *fingerprint.Fingerprint) *httptest.ResponseRecorder {
+
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	t.Helper()
@@ -769,9 +720,13 @@ func callAPIWithJSON(t *testing.T, method string, path string, requestData inter
 	}
 
 	req, err := http.NewRequest(method, path, body)
-	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if authFingerprint != nil {
+		req.Header.Set("Authorization", fmt.Sprintf("tmpfingerprint: %s", authFingerprint.Uri()))
 	}
 
 	recorder := httptest.NewRecorder() // create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
@@ -809,6 +764,69 @@ func assertBodyEqualTo(t *testing.T, bodyReader io.Reader, expectedBody string) 
 	assert.ErrorIsNil(t, err)
 
 	assert.Equal(t, string(body), exampledata.ExamplePublicKey4)
+}
+
+func testEndpointRejectsBadJSON(t *testing.T, method string, urlPath string) {
+	t.Helper()
+
+	t.Run("missing JSON content type", func(t *testing.T) {
+		req, err := http.NewRequest(method, urlPath, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		mockResponse := httptest.NewRecorder() // ResponseRecorder, satisfies http.ResponseWriter
+		subrouter.ServeHTTP(mockResponse, req)
+
+		assertStatusCode(t, http.StatusBadRequest, mockResponse.Code)
+		assertHasJSONErrorDetail(
+			t, mockResponse.Body, "expecting header Content-Type: application/json",
+		)
+	})
+
+	t.Run("request content-type header isn't application/json", func(t *testing.T) {
+		req, err := http.NewRequest(method, urlPath, nil)
+		assert.ErrorIsNil(t, err)
+
+		req.Header.Set("Content-Type", "multipart/form-data")
+
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusBadRequest, response.Code)
+		assertHasJSONErrorDetail(t, response.Body,
+			"expecting header Content-Type: application/json")
+	})
+
+	t.Run("json content type but empty request body", func(t *testing.T) {
+		req, err := http.NewRequest("POST", "/v1/secrets", nil)
+		assert.ErrorIsNil(t, err)
+
+		req.Header.Set("Content-Type", "application/json")
+
+		response := httptest.NewRecorder()
+		subrouter.ServeHTTP(response, req)
+
+		assertStatusCode(t, http.StatusBadRequest, response.Code)
+		assertHasJSONErrorDetail(t, response.Body, "empty request body")
+	})
+
+	t.Run("invalid JSON", func(t *testing.T) {
+		req, err := http.NewRequest(method, urlPath, strings.NewReader("invalid-json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		mockResponse := httptest.NewRecorder() // ResponseRecorder, satisfies http.ResponseWriter
+		subrouter.ServeHTTP(mockResponse, req)
+
+		assertStatusCode(t, http.StatusBadRequest, mockResponse.Code)
+		assertHasJSONErrorDetail(
+			t, mockResponse.Body,
+			"invalid JSON: invalid character 'i' looking for beginning of value",
+		)
+	})
 }
 
 func decryptMessage(armoredEncryptedSecret string, key *pgpkey.PgpKey) (io.Reader, error) {
