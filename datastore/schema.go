@@ -70,4 +70,11 @@ var migrateDatabaseStatements = []string{
 	`CREATE EXTENSION IF NOT EXISTS citext`,
 
 	`ALTER TABLE email_key_link ALTER COLUMN email TYPE citext`,
+
+	`CREATE TABLE IF NOT EXISTS teams (
+                uuid UUID PRIMARY KEY,
+                created_at TIMESTAMP NOT NULL,
+                roster TEXT,
+                roster_signature TEXT
+    )`,
 }
