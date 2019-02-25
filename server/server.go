@@ -38,6 +38,8 @@ func init() {
 	subrouter.HandleFunc("/secrets", sendSecretHandler).Methods("POST")
 	subrouter.HandleFunc("/secrets", listSecretsHandler).Methods("GET")
 	subrouter.HandleFunc("/secrets/{uuid:"+uuid4Pattern+"}", deleteSecretHandler).Methods("DELETE")
+
+	subrouter.HandleFunc("/teams", createTeamHandler).Methods("POST")
 }
 
 // Serve initializes the database and runs http.ListenAndServer

@@ -40,9 +40,13 @@ func Parse(fp string) (Fingerprint, error) {
 	var nilFingerprint Fingerprint
 	withoutSpaces := strings.Replace(fp, " ", "", -1)
 
+	if withoutSpaces == "" {
+		return nilFingerprint, fmt.Errorf("invalid fingerprint: empty")
+	}
+
 	expectedPattern := `^(0x)?[A-Fa-f0-9]{40}$`
 	if matched, err := regexp.MatchString(expectedPattern, withoutSpaces); !matched || err != nil {
-		return nilFingerprint, fmt.Errorf("fingerprint doesn't match pattern '%v', err=%v", expectedPattern, err)
+		return nilFingerprint, fmt.Errorf("invalid v4 fingerprint: not 40 hex characters")
 	}
 
 	withoutLeading0x := strings.TrimPrefix(withoutSpaces, "0x")
@@ -69,6 +73,24 @@ func MustParse(fp string) Fingerprint {
 	return result
 }
 
+// UnmarshalText implements encoding.TextUnmarshaler which can parse (unmarshal) a textual
+// version of itself. It allows JSON / toml etc decoders to create a Fingerprint from a string.
+func (f *Fingerprint) UnmarshalText(text []byte) error {
+	parsed, err := Parse(string(text))
+	if err != nil {
+		return err
+	}
+
+	*f = parsed
+	return nil
+}
+
+// MarshalText implements encoding.TextUnmarshaler, converting a Fingerprint into bytes for
+// encoders like JSON, TOML etc.
+func (f Fingerprint) MarshalText() ([]byte, error) {
+	return []byte(f.Hex()), nil
+}
+
 // FromBytes takes 20 bytes and returns a Fingerprint.
 func FromBytes(bytes [20]byte) Fingerprint {
 	return Fingerprint{
@@ -88,12 +110,11 @@ func Contains(haystack []Fingerprint, needle Fingerprint) bool {
 	return false
 }
 
-// Return a human-friendly version of the fingerprint, which should be a 40
+// String return a human-friendly version of the fingerprint, which should be a 40
 // character hex string.
 // `AB01 AB01 AB01 AB01 AB01  AB01 AB01 AB01 AB01 AB01`
 // String() returns the fingerprint in the "human friendly" format, for example
 // `AB01 AB01 AB01 AB01 AB01  AB01 AB01 AB01 AB01 AB01`
-
 func (f Fingerprint) String() string {
 	f.assertIsSet()
 	b := f.fingerprintBytes
@@ -105,10 +126,9 @@ func (f Fingerprint) String() string {
 	)
 }
 
-// Return the fingerprint as uppercase hex (20 bytes, 40 characters) without
+// Hex return the fingerprint as uppercase hex (20 bytes, 40 characters) without
 // spaces, for example:
 // `AB01AB01AB01AB01AB01AB01AB01AB01AB01AB01`
-
 func (f Fingerprint) Hex() string {
 	f.assertIsSet()
 	b := f.fingerprintBytes
@@ -130,9 +150,9 @@ func (f Fingerprint) Bytes() [20]byte {
 	return f.fingerprintBytes
 }
 
+// IsSet returns whether the fingerprint has been parsed correctly, and therefore is set
 func (f Fingerprint) IsSet() bool {
 	return f.isSet
-
 }
 
 func (f Fingerprint) assertIsSet() {
