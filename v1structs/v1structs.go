@@ -84,6 +84,11 @@ type SecretMetadata struct {
 	SecretUUID string `json:"secretUuid"`
 }
 
+// GetTeamResponse is the JSON structure returned by the get team API endpoint.
+type GetTeamResponse struct {
+	Name string `json:"name"`
+}
+
 // UpsertTeamRequest is the JSON structure containing a signed team roster.
 type UpsertTeamRequest struct {
 	// TeamRoster describes the members and configuration of a team.
