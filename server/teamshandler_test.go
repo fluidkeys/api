@@ -33,13 +33,13 @@ func TestCreateTeamHandler(t *testing.T) {
 		exampledata.ExamplePrivateKey4, "test4")
 	signerFingerprint := unlockedKey.Fingerprint()
 
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	duplicateUUID, err := uuid.NewV4() // this is used to test the duplicated case
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	goodUUID, err := uuid.FromString("74bb40b4-3510-11e9-968e-53c38df634be")
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	goodRoster := `
 uuid = "74bb40b4-3510-11e9-968e-53c38df634be"
@@ -54,13 +54,13 @@ fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 `
 
 	goodSignature, err := makeArmoredDetachedSignature([]byte(goodRoster), unlockedKey)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	setup := func() {
-		assert.ErrorIsNil(t,
+		assert.NoError(t,
 			datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
 
-		assert.ErrorIsNil(t,
+		assert.NoError(t,
 			datastore.LinkEmailToFingerprint(
 				nil, "test4@example.com", exampledata.ExampleFingerprint4,
 			),
@@ -70,13 +70,13 @@ fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 
 	teardown := func() {
 		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		_, err = datastore.DeleteTeam(nil, goodUUID)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		_, err = datastore.DeleteTeam(nil, duplicateUUID)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	}
 
 	setup()
@@ -96,7 +96,7 @@ fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 
 		t.Run("adds valid database row", func(t *testing.T) {
 			team, err := datastore.GetTeam(nil, goodUUID)
-			assert.ErrorIsNil(t, err)
+			assert.NoError(t, err)
 
 			assert.Equal(t, goodUUID, team.UUID)
 			assert.Equal(t, goodRoster, team.Roster)
@@ -150,11 +150,11 @@ fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 	t.Run("mismatch between signer fingerprint and long keyID in signature", func(t *testing.T) {
 		mismatchedFingerprint := exampledata.ExampleFingerprint2
 
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey2))
-		assert.ErrorIsNil(t,
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey2))
+		assert.NoError(t,
 			datastore.LinkEmailToFingerprint(nil, "test2@example.com", mismatchedFingerprint))
 
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		requestData := v1structs.UpsertTeamRequest{
 			TeamRoster:               goodRoster,
@@ -167,17 +167,17 @@ fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 			"signature verification failed")
 
 		_, err := datastore.DeletePublicKey(mismatchedFingerprint)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("dont have public key that signed the roster", func(t *testing.T) {
 		keyNotInAPI, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(
 			exampledata.ExamplePrivateKey3, "test3")
 		fingerprintNotInAPI := keyNotInAPI.Fingerprint()
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		signature, err := makeArmoredDetachedSignature([]byte(goodRoster), keyNotInAPI)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		requestData := v1structs.UpsertTeamRequest{
 			TeamRoster:               goodRoster,
@@ -287,7 +287,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 			t.Run(test.testName, func(t *testing.T) {
 
 				signature, err := makeArmoredDetachedSignature([]byte(test.roster), unlockedKey)
-				assert.ErrorIsNil(t, err)
+				assert.NoError(t, err)
 
 				requestData := v1structs.UpsertTeamRequest{
 					TeamRoster:               test.roster,
@@ -317,7 +317,7 @@ fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 `
 
 		signature, err := makeArmoredDetachedSignature([]byte(duplicatedRoster), unlockedKey)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		requestData := v1structs.UpsertTeamRequest{
 			TeamRoster:               duplicatedRoster,
@@ -343,12 +343,12 @@ func TestGetTeamHandler(t *testing.T) {
 	}
 
 	setup := func() {
-		assert.ErrorIsNil(t, datastore.CreateTeam(nil, exampleTeam))
+		assert.NoError(t, datastore.CreateTeam(nil, exampleTeam))
 	}
 
 	teardown := func() {
 		_, err := datastore.DeleteTeam(nil, exampleTeam.UUID)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	}
 
 	setup()
@@ -391,7 +391,7 @@ func TestGetTeamHandler(t *testing.T) {
 			CreatedAt: now,
 		}
 
-		assert.ErrorIsNil(t, datastore.CreateTeam(nil, badRosterTeam))
+		assert.NoError(t, datastore.CreateTeam(nil, badRosterTeam))
 		defer func() {
 			datastore.DeleteTeam(nil, badRosterTeam.UUID)
 		}()

@@ -64,13 +64,13 @@ func TestPingEndpoint(t *testing.T) {
 }
 
 func TestGetPublicKeyByEmailHandler(t *testing.T) {
-	assert.ErrorIsNil(t,
+	assert.NoError(t,
 		datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4),
 	)
-	assert.ErrorIsNil(t,
+	assert.NoError(t,
 		datastore.LinkEmailToFingerprint(nil, "test4@example.com", exampledata.ExampleFingerprint4),
 	)
-	assert.ErrorIsNil(t,
+	assert.NoError(t,
 		datastore.LinkEmailToFingerprint(nil, "test4+foo@example.com", exampledata.ExampleFingerprint4),
 	)
 
@@ -136,7 +136,7 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 }
 
 func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
-	assert.ErrorIsNil(t,
+	assert.NoError(t,
 		datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4),
 	)
 
@@ -184,10 +184,10 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 	armoredPublicKey := exampledata.ExamplePublicKey4
 	validSha256 := fmt.Sprintf("%X", sha256.Sum256([]byte(exampledata.ExamplePublicKey4)))
 	publicKey, err := pgpkey.LoadFromArmoredPublicKey(armoredPublicKey)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	unlockedKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(exampledata.ExamplePrivateKey4, "test4")
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	uuid1 := uuid.Must(uuid.NewV4())
 	now := time.Date(2018, 6, 15, 16, 30, 0, 0, time.UTC)
@@ -198,7 +198,7 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 
 	teardown := func() {
 		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	}
 
 	makeSignedData := func(t *testing.T, timestamp time.Time, uuidString string, sha256 string) string {
@@ -211,10 +211,10 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 				SingleUseUUID:   uuidString,
 				PublicKeySHA256: sha256,
 			})
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		signedData, err := signText(upsertPublicKeyJSON.Bytes(), unlockedKey)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		return signedData
 	}
 
@@ -288,16 +288,16 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 
 		responseData := v1structs.UpsertPublicKeyResponse{}
 		err = json.NewDecoder(response.Body).Decode(&responseData)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		newPasswordReader, err := decryptMessage(responseData.ArmoredEncryptedBasicAuthPassword, unlockedKey)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(newPasswordReader)
 
 		_, err = uuid.FromString(buf.String())
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	})
 
 	teardown()
@@ -306,25 +306,25 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 func TestSendSecretHandler(t *testing.T) {
 
 	key, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey4)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	otherKey, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey3)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 	unknownFingerprint := fingerprint.MustParse("AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB")
 
 	validEncryptedArmoredSecret, err := encryptStringToArmor("test foo", key)
 
 	setup := func() {
 		// put `key` and `otherKey` in the datastore, but not `unknownFingerprint`
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey3))
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey3))
 	}
 	teardown := func() {
 		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		_, err = datastore.DeletePublicKey(exampledata.ExampleFingerprint3)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	}
 
 	setup()
@@ -435,7 +435,7 @@ func TestSendSecretHandler(t *testing.T) {
 			RecipientFingerprint: fmt.Sprintf("OPENPGP4FPR:%s", key.Fingerprint().Hex()),
 		}
 		requestData.ArmoredEncryptedSecret, err = encryptStringToArmor(string(runes), key)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
@@ -450,10 +450,10 @@ func TestSendSecretHandler(t *testing.T) {
 
 func TestListSecretsHandler(t *testing.T) {
 	key, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey4)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	// otherKey, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey3)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 	unknownFingerprint := fingerprint.MustParse("AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB")
 
 	validEncryptedArmoredSecret, err := encryptStringToArmor("test foo", key)
@@ -463,28 +463,28 @@ func TestListSecretsHandler(t *testing.T) {
 	setup := func() {
 		now := time.Date(2018, 6, 5, 16, 30, 5, 0, time.UTC)
 		// put `key` and `otherKey` in the datastore, but not `unknownFingerprint`
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey3))
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey3))
 		secretUUID, err = datastore.CreateSecret(
 			exampledata.ExampleFingerprint4, validEncryptedArmoredSecret, now)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	}
 	teardown := func() {
 		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		_, err = datastore.DeletePublicKey(exampledata.ExampleFingerprint3)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		_, err = datastore.DeleteSecret(*secretUUID, exampledata.ExampleFingerprint4)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	}
 
 	setup()
 
 	t.Run("without authorization header", func(t *testing.T) {
 		req, err := http.NewRequest("GET", "/v1/secrets", nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		response := httptest.NewRecorder()
 		subrouter.ServeHTTP(response, req)
 
@@ -495,7 +495,7 @@ func TestListSecretsHandler(t *testing.T) {
 
 	t.Run("malformed authorization header", func(t *testing.T) {
 		req, err := http.NewRequest("GET", "/v1/secrets", nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		req.Header.Set("Authorization", "invalid")
 		response := httptest.NewRecorder()
 		subrouter.ServeHTTP(response, req)
@@ -507,7 +507,7 @@ func TestListSecretsHandler(t *testing.T) {
 
 	t.Run("no matching public key", func(t *testing.T) {
 		req, err := http.NewRequest("GET", "/v1/secrets", nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		req.Header.Set(
 			"Authorization",
 			fmt.Sprintf("tmpfingerprint: %s", unknownFingerprint.Uri()),
@@ -522,7 +522,7 @@ func TestListSecretsHandler(t *testing.T) {
 
 	t.Run("valid request with no secrets", func(t *testing.T) {
 		req, err := http.NewRequest("GET", "/v1/secrets", nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		req.Header.Set(
 			"Authorization",
 			fmt.Sprintf("tmpfingerprint: %s", exampledata.ExampleFingerprint3.Uri()),
@@ -535,13 +535,13 @@ func TestListSecretsHandler(t *testing.T) {
 
 		responseData := v1structs.ListSecretsResponse{}
 		err = json.NewDecoder(response.Body).Decode(&responseData)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, 0, len(responseData.Secrets))
 	})
 
 	t.Run("valid request with 1 secret", func(t *testing.T) {
 		req, err := http.NewRequest("GET", "/v1/secrets", nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		req.Header.Set(
 			"Authorization",
 			fmt.Sprintf("tmpfingerprint: %s", exampledata.ExampleFingerprint4.Uri()),
@@ -560,7 +560,7 @@ func TestListSecretsHandler(t *testing.T) {
 				t.Fatal("response has nil Body")
 			}
 			err := json.NewDecoder(response.Body).Decode(&responseData)
-			assert.ErrorIsNil(t, err)
+			assert.NoError(t, err)
 		})
 
 		t.Run("JSON has one secret", func(t *testing.T) {
@@ -574,15 +574,15 @@ func TestListSecretsHandler(t *testing.T) {
 		t.Run("encryptedMetadata can be decrypted", func(t *testing.T) {
 			privateKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(
 				exampledata.ExamplePrivateKey4, "test4")
-			assert.ErrorIsNil(t, err)
+			assert.NoError(t, err)
 			msg, err := decryptMessage(
 				responseData.Secrets[0].EncryptedMetadata, privateKey)
-			assert.ErrorIsNil(t, err)
+			assert.NoError(t, err)
 
 			t.Run("metadata has correct secret UUID", func(t *testing.T) {
 				metadata := v1structs.SecretMetadata{}
 				err := json.NewDecoder(msg).Decode(&metadata)
-				assert.ErrorIsNil(t, err)
+				assert.NoError(t, err)
 
 				gotUUID, err := uuid.FromString(metadata.SecretUUID)
 				if err != nil {
@@ -604,10 +604,10 @@ func TestListSecretsHandler(t *testing.T) {
 
 func TestDeleteSecretHandler(t *testing.T) {
 	key, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey4)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	// otherKey, err := pgpkey.LoadFromArmoredPublicKey(exampledata.ExamplePublicKey3)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	validEncryptedArmoredSecret, err := encryptStringToArmor("test foo", key)
 
@@ -615,21 +615,21 @@ func TestDeleteSecretHandler(t *testing.T) {
 
 	setup := func() {
 		now := time.Date(2018, 6, 5, 16, 30, 5, 0, time.UTC)
-		assert.ErrorIsNil(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
 		secretUUID, err = datastore.CreateSecret(
 			exampledata.ExampleFingerprint4, validEncryptedArmoredSecret, now)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	}
 	teardown := func() {
 		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 	}
 
 	setup()
 
 	t.Run("invalid UUID in URL", func(t *testing.T) {
 		req, err := http.NewRequest("DELETE", "/v1/secrets/invalid-uuid", nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		response := httptest.NewRecorder()
 		subrouter.ServeHTTP(response, req)
 
@@ -638,7 +638,7 @@ func TestDeleteSecretHandler(t *testing.T) {
 
 	t.Run("without authorization header", func(t *testing.T) {
 		req, err := http.NewRequest("DELETE", "/v1/secrets/"+secretUUID.String(), nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		response := httptest.NewRecorder()
 		subrouter.ServeHTTP(response, req)
 
@@ -649,7 +649,7 @@ func TestDeleteSecretHandler(t *testing.T) {
 
 	t.Run("malformed authorization header", func(t *testing.T) {
 		req, err := http.NewRequest("DELETE", "/v1/secrets/"+secretUUID.String(), nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		req.Header.Set("Authorization", "invalid")
 		response := httptest.NewRecorder()
 		subrouter.ServeHTTP(response, req)
@@ -661,7 +661,7 @@ func TestDeleteSecretHandler(t *testing.T) {
 
 	t.Run("delete secret good request", func(t *testing.T) {
 		req, err := http.NewRequest("DELETE", "/v1/secrets/"+secretUUID.String(), nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		req.Header.Set(
 			"Authorization",
 			fmt.Sprintf("tmpfingerprint: %s", exampledata.ExampleFingerprint4.Uri()),
@@ -673,7 +673,7 @@ func TestDeleteSecretHandler(t *testing.T) {
 		assertStatusCode(t, http.StatusAccepted, response.Code)
 
 		secrets, err := datastore.GetSecrets(exampledata.ExampleFingerprint4)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		if len(secrets) != 0 {
 			t.Fatalf("expected 0 secrets after delete, got %d: %v", len(secrets), secrets)
 		}
@@ -761,7 +761,7 @@ func assertBodyDecodesInto(t *testing.T, body io.Reader, responseStruct interfac
 
 func assertBodyEqualTo(t *testing.T, bodyReader io.Reader, expectedBody string) {
 	body, err := ioutil.ReadAll(bodyReader)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, string(body), exampledata.ExamplePublicKey4)
 }
@@ -786,7 +786,7 @@ func testEndpointRejectsBadJSON(t *testing.T, method string, urlPath string) {
 
 	t.Run("request content-type header isn't application/json", func(t *testing.T) {
 		req, err := http.NewRequest(method, urlPath, nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		req.Header.Set("Content-Type", "multipart/form-data")
 
@@ -800,7 +800,7 @@ func testEndpointRejectsBadJSON(t *testing.T, method string, urlPath string) {
 
 	t.Run("json content type but empty request body", func(t *testing.T) {
 		req, err := http.NewRequest("POST", "/v1/secrets", nil)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 
 		req.Header.Set("Content-Type", "application/json")
 
