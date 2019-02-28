@@ -78,6 +78,18 @@ var migrateDatabaseStatements = []string{
                 roster_signature TEXT
     )`,
 
+	`CREATE TABLE IF NOT EXISTS team_join_requests (
+                uuid UUID PRIMARY KEY,
+                created_at TIMESTAMP NOT NULL,
+
+                email citext NOT NULL,
+                fingerprint VARCHAR NOT NULL,
+
+                team_uuid UUID NOT NULL REFERENCES teams(uuid) ON DELETE CASCADE
+
+    )`,
+}
+
 // allTables is used by the test helper DropAllTheTables to keep track of what tables to
 // tear down after running tests
 var allTables = []string{
@@ -86,5 +98,6 @@ var allTables = []string{
 	"email_key_link",
 	"secrets",
 	"keys",
+	"team_join_requests",
 	"teams",
 }
