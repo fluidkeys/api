@@ -17,7 +17,7 @@ func TestCreateTeam(t *testing.T) {
 	}
 
 	err := CreateTeam(nil, team)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestGetTeam(t *testing.T) {
@@ -25,7 +25,7 @@ func TestGetTeam(t *testing.T) {
 		createTestTeam(t)
 
 		team, err := GetTeam(nil, testUUID)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		if team == nil {
 			t.Fatalf("expected team, got nil")
 		}
@@ -42,7 +42,7 @@ func TestGetTeam(t *testing.T) {
 		deleteTestTeam(t)
 
 		team, err := GetTeam(nil, testUUID)
-		assert.ErrorIsNotNil(t, err)
+		assert.GotError(t, err)
 		if team != nil {
 			t.Fatalf("expected team=nil, got %v", team)
 		}
@@ -54,7 +54,7 @@ func TestTeamExists(t *testing.T) {
 		createTestTeam(t)
 
 		exists, err := TeamExists(nil, testUUID)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, true, exists)
 	})
 
@@ -62,7 +62,7 @@ func TestTeamExists(t *testing.T) {
 		deleteTestTeam(t)
 
 		exists, err := TeamExists(nil, testUUID)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, false, exists)
 	})
 }
@@ -72,7 +72,7 @@ func TestDeleteTeam(t *testing.T) {
 		createTestTeam(t)
 
 		found, err := DeleteTeam(nil, testUUID)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, true, found)
 
 	})
@@ -81,7 +81,7 @@ func TestDeleteTeam(t *testing.T) {
 		deleteTestTeam(t)
 
 		found, err := DeleteTeam(nil, testUUID)
-		assert.ErrorIsNil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, false, found)
 	})
 }
@@ -96,13 +96,13 @@ func createTestTeam(t *testing.T) {
 	}
 
 	err := CreateTeam(nil, team)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 }
 
 func deleteTestTeam(t *testing.T) {
 	t.Helper()
 	_, err := DeleteTeam(nil, testUUID)
-	assert.ErrorIsNil(t, err)
+	assert.NoError(t, err)
 }
 
 var (
