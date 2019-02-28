@@ -13,6 +13,8 @@ import (
 	"github.com/fluidkeys/crypto/openpgp"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/fluidkeys/fluidkeys/team"
+	"github.com/gofrs/uuid"
+	"github.com/gorilla/mux"
 )
 
 func createTeamHandler(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +115,36 @@ func createTeamHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTeamHandler(w http.ResponseWriter, r *http.Request) {
+	teamUUID, err := uuid.FromString(mux.Vars(r)["teamUUID"])
+	if err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	dbTeam, err := datastore.GetTeam(nil, teamUUID)
+	if err == datastore.ErrNotFound {
+		writeJsonError(w, err, http.StatusNotFound)
+		return
+
+	} else if err != nil {
+		writeJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// parse the roster to get the team name
+	team, err := team.Parse(strings.NewReader(dbTeam.Roster))
+	if err != nil {
+		writeJsonError(w,
+			fmt.Errorf("failed to parse name from team roster"),
+			http.StatusInternalServerError)
+		return
+	}
+
+	responseData := v1structs.GetTeamResponse{
+		Name: team.Name,
+	}
+
+	writeJsonResponse(w, responseData)
 }
 
 func createRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
