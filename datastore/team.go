@@ -54,15 +54,6 @@ func TeamExists(txn *sql.Tx, teamUUID uuid.UUID) (bool, error) {
 // CreateTeam creates a team in the database.
 // If a team already exists with team.UUID it returns an error
 func CreateTeam(txn *sql.Tx, team Team) error {
-	// if exists, err := TeamExists(txn, team.UUID); err != nil {
-	// 	return err
-
-	// } else if exists {
-	// 	return fmt.Errorf("team with UUID %s already exists")
-
-	// } else {
-	// 	log.Printf("team does *not* already exist: %v", team.UUID)
-	// }
 	query := `INSERT INTO teams (uuid, created_at, roster, roster_signature)
 	          VALUES ($1, $2, $3, $4)`
 
