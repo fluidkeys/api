@@ -409,3 +409,179 @@ func TestGetTeamHandler(t *testing.T) {
 		})
 	})
 }
+
+func TestCreateRequestToJoinTeamHandler(t *testing.T) {
+	now := time.Date(2019, 2, 28, 16, 35, 45, 0, time.UTC)
+	exampleTeam := datastore.Team{
+		UUID:            uuid.Must(uuid.FromString("aee4b386-3b52-11e9-a620-2381a199e2c8")),
+		Roster:          "name = \"Example Team\"",
+		RosterSignature: "",
+		CreatedAt:       now,
+	}
+
+	setup := func() {
+		assert.NoError(t, datastore.CreateTeam(nil, exampleTeam))
+
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
+		assert.NoError(t,
+			datastore.LinkEmailToFingerprint(
+				nil, "test4@example.com", exampledata.ExampleFingerprint4,
+			))
+	}
+
+	teardown := func() {
+		_, err := datastore.DeleteTeam(nil, exampleTeam.UUID)
+		assert.NoError(t, err)
+
+		_, err = datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.NoError(t, err)
+	}
+
+	setup()
+	defer teardown()
+
+	t.Run("create a request to join a team", func(t *testing.T) {
+		requestData := v1structs.RequestToJoinTeamRequest{
+			TeamEmail: "test4@example.com",
+		}
+
+		mockResponse := callAPIWithJSON(t,
+			"POST", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8/requests-to-join",
+			requestData, &exampledata.ExampleFingerprint4)
+
+		t.Run("status code 201 created", func(t *testing.T) {
+			assertStatusCode(t, http.StatusCreated, mockResponse.Code)
+		})
+	})
+
+	testEndpointRejectsBadJSON(t,
+		"POST", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8/requests-to-join",
+		&exampledata.ExampleFingerprint4)
+
+	testEndpointRejectsUnauthenticated(t,
+		"POST", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8/requests-to-join",
+		v1structs.RequestToJoinTeamRequest{})
+
+	t.Run("for non existent team", func(t *testing.T) {
+		mockResponse := callAPI(t,
+			// this team UUID doesn't exist
+			"POST", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810/requests-to-join", nil)
+
+		t.Run("status code 400 bad request", func(t *testing.T) {
+			assertStatusCode(t, http.StatusBadRequest, mockResponse.Code)
+		})
+	})
+
+	t.Run("missing teamEmail", func(t *testing.T) {
+		requestData := v1structs.RequestToJoinTeamRequest{
+			TeamEmail: "",
+		}
+
+		mockResponse := callAPIWithJSON(t,
+			"POST", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810/requests-to-join",
+			requestData, &exampledata.ExampleFingerprint4)
+
+		t.Run("status code 400 bad request", func(t *testing.T) {
+			assertStatusCode(t, http.StatusBadRequest, mockResponse.Code)
+		})
+
+		t.Run("with good error message", func(t *testing.T) {
+			assertHasJSONErrorDetail(t, mockResponse.Body, "missing teamEmail")
+		})
+	})
+
+	t.Run("existing {team, email}, but different fingerprint should error", func(t *testing.T) {
+		team := datastore.Team{
+			UUID:            uuid.Must(uuid.NewV4()),
+			Roster:          "name = \"Example Team\"",
+			RosterSignature: "",
+			CreatedAt:       now,
+		}
+		assert.NoError(t, datastore.CreateTeam(nil, team))
+		defer func() {
+			_, err := datastore.DeleteTeam(nil, team.UUID)
+			assert.NoError(t, err)
+		}()
+
+		requestData := v1structs.RequestToJoinTeamRequest{
+			TeamEmail: "conflicting-example@example.com",
+		}
+
+		assert.NoError(t,
+			datastore.LinkEmailToFingerprint(
+				nil, "conflicting-example@example.com", exampledata.ExampleFingerprint4,
+			))
+
+		firstResponse := callAPIWithJSON(t,
+			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
+			requestData, &exampledata.ExampleFingerprint4)
+
+		assertStatusCode(t, http.StatusCreated, firstResponse.Code) // first request succeeds
+
+		// insert exmaple key 2 as a conflicting key but with the same email
+
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey2))
+		assert.NoError(t,
+			datastore.LinkEmailToFingerprint(
+				nil, "conflicting-example@example.com", exampledata.ExampleFingerprint2,
+			))
+
+		secondResponse := callAPIWithJSON(t,
+			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
+			// same {team, email}, *different* fingerprint
+			requestData, &exampledata.ExampleFingerprint2,
+		)
+
+		t.Run("returns http 409", func(t *testing.T) {
+			assertStatusCode(t, http.StatusConflict, secondResponse.Code)
+		})
+
+		t.Run("with good error message", func(t *testing.T) {
+			assertHasJSONErrorDetail(t, secondResponse.Body,
+				"got existing request for conflicting-example@example.com to join that team "+
+					"with a different fingerprint")
+		})
+
+		datastore.DeletePublicKey(exampledata.ExampleFingerprint2)
+	})
+
+	t.Run("existing {team, email, fingerprint} request should fail", func(t *testing.T) {
+		team := datastore.Team{
+			UUID:            uuid.Must(uuid.NewV4()),
+			Roster:          "name = \"Example Team\"",
+			RosterSignature: "",
+			CreatedAt:       now,
+		}
+		assert.NoError(t, datastore.CreateTeam(nil, team))
+		defer func() {
+			_, err := datastore.DeleteTeam(nil, team.UUID)
+			assert.NoError(t, err)
+		}()
+
+		requestData := v1structs.RequestToJoinTeamRequest{
+			TeamEmail: "test4@example.com",
+		}
+
+		firstResponse := callAPIWithJSON(t,
+			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
+			requestData, &exampledata.ExampleFingerprint4)
+
+		if firstResponse.Code != http.StatusCreated {
+			t.Fatalf("failed to create team join request, got http %d", firstResponse.Code)
+		}
+
+		secondResponse := callAPIWithJSON(t,
+			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
+			// same fingerprint as previous request: should succeed
+			requestData, &exampledata.ExampleFingerprint4)
+
+		t.Run("returns http 409 conflict", func(t *testing.T) {
+			assertStatusCode(t, http.StatusConflict, secondResponse.Code)
+		})
+
+		t.Run("with good error message", func(t *testing.T) {
+			assertHasJSONErrorDetail(t, secondResponse.Body,
+				"already got request to join team with that email and fingerprint")
+		})
+	})
+}

@@ -148,6 +148,95 @@ func getTeamHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func createRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
+	teamUUID, err := uuid.FromString(mux.Vars(r)["teamUUID"])
+	if err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	requestKey, err := getAuthorizedUserPublicKey(r)
+	if err == errAuthKeyNotFound {
+		writeJsonError(w,
+			fmt.Errorf("public key for fingerprint has not been uploaded"),
+			http.StatusBadRequest)
+		return
+	} else if err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	requestData := v1structs.RequestToJoinTeamRequest{}
+	if err := decodeJsonRequest(r, &requestData); err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	if requestData.TeamEmail == "" {
+		writeJsonError(w, fmt.Errorf("missing teamEmail"), http.StatusBadRequest)
+		return
+	}
+
+	err = datastore.RunInTransaction(func(txn *sql.Tx) error {
+		if verified, err := datastore.QueryEmailVerifiedForFingerprint(
+			txn, requestData.TeamEmail, requestKey.Fingerprint()); err != nil {
+			return fmt.Errorf("error checking verification: %v", err)
+		} else if !verified {
+			return fmt.Errorf("key is not verified for email")
+		}
+
+		dbTeam, err := datastore.GetTeam(txn, teamUUID)
+		if err == datastore.ErrNotFound {
+			return fmt.Errorf("team not found")
+		} else if err != nil {
+			return fmt.Errorf("error fetching team: %v", err)
+		}
+
+		existingRequest, err := datastore.GetRequestToJoinTeam(txn, teamUUID, requestData.TeamEmail)
+		if err != nil && err != datastore.ErrNotFound {
+			return fmt.Errorf("error looking for existing request: %v", err)
+		}
+
+		if existingRequest != nil {
+			if existingRequest.Fingerprint == requestKey.Fingerprint() {
+				// got an existing, identical request. rather than creating a new one, just return the
+				// UUID of the existing one
+				return errIdenticalRequestAlreadyExists
+			}
+
+			// got an existing request for the same {team, email} combination but with a different
+			// fingerprint. reject it.
+			return errConflictingRequestAlreadyExists
+		}
+
+		_, err = datastore.CreateRequestToJoinTeam(
+			txn, dbTeam.UUID, requestData.TeamEmail, requestKey.Fingerprint(), time.Now())
+		return nil
+	})
+
+	switch err {
+	case nil:
+		w.WriteHeader(http.StatusCreated)
+		w.Write(nil)
+		return
+
+	case errIdenticalRequestAlreadyExists:
+		writeJsonError(w,
+			fmt.Errorf("already got request to join team with that email and fingerprint"),
+			http.StatusConflict)
+		return
+
+	case errConflictingRequestAlreadyExists:
+		writeJsonError(w,
+			fmt.Errorf("got existing request for conflicting-example@example.com to join that "+
+				"team with a different fingerprint"),
+			http.StatusConflict)
+		return
+
+	default:
+		writeJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+
 }
 
 func listRequestsToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
@@ -166,3 +255,9 @@ func checkRosterSignature(requestData v1structs.UpsertTeamRequest, signerKey *pg
 	)
 	return err
 }
+
+var errIdenticalRequestAlreadyExists = fmt.Errorf(
+	"request to join team already exists with the same email and fingerprint")
+
+var errConflictingRequestAlreadyExists = fmt.Errorf(
+	"request to join team already exists for that email with a different fingerprint")

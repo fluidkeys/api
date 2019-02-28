@@ -776,6 +776,21 @@ func assertBodyEqualTo(t *testing.T, bodyReader io.Reader, expectedBody string) 
 	assert.Equal(t, string(body), exampledata.ExamplePublicKey4)
 }
 
+func testEndpointRejectsUnauthenticated(t *testing.T, method string, urlPath string, requestData interface{}) {
+	// TODO: use this new helper elsewhere too
+	t.Helper()
+
+	t.Run("request doesn't contain signer fingerprint in auth header", func(t *testing.T) {
+
+		response := callAPIWithJSON(
+			t, method, urlPath, requestData, nil) // nil -> unauthenticated
+		assertStatusCode(t, http.StatusBadRequest, response.Code)
+		assertHasJSONErrorDetail(t,
+			response.Body,
+			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
+	})
+}
+
 func testEndpointRejectsBadJSON(t *testing.T, method string, urlPath string,
 	authFingerprint *fingerprint.Fingerprint) {
 
