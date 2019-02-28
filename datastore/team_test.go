@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fluidkeys/fluidkeys/assert"
+	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/gofrs/uuid"
 )
 
@@ -83,6 +84,81 @@ func TestDeleteTeam(t *testing.T) {
 		found, err := DeleteTeam(nil, testUUID)
 		assert.NoError(t, err)
 		assert.Equal(t, false, found)
+	})
+}
+
+func TestCreateRequestToJoinTeam(t *testing.T) {
+	t.Run("when team exists and request is OK", func(t *testing.T) {
+		createTestTeam(t)
+		defer deleteTestTeam(t)
+
+		now := time.Now()
+
+		_, err := CreateRequestToJoinTeam(
+			nil,
+			testUUID,
+			"test@example.com",
+			fpr.MustParse("AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB"),
+			now,
+		)
+		assert.NoError(t, err)
+	})
+
+	t.Run("when team doesn't exist", func(t *testing.T) {
+		_, err := CreateRequestToJoinTeam(
+			nil,
+			uuid.Must(uuid.NewV4()), // no existent
+			"test@example.com",
+			fpr.MustParse("AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB"),
+			now,
+		)
+		assert.GotError(t, err)
+		assert.Equal(t, ErrNotFound, err)
+	})
+
+	t.Run("existing (team, email), but different fingerprint should error", func(t *testing.T) {
+		createTestTeam(t)
+		defer deleteTestTeam(t)
+
+		_, err := CreateRequestToJoinTeam(
+			nil,
+			testUUID,
+			"conflicting-fingerprint@example.com",
+			fpr.MustParse("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+			now,
+		)
+		assert.NoError(t, err)
+
+		_, err = CreateRequestToJoinTeam(
+			nil,
+			testUUID,
+			"conflicting-fingerprint@example.com",
+			fpr.MustParse("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"), // different fingerprint
+			now,
+		)
+		assert.GotError(t, err)
+	})
+
+	t.Run("existing (team, email, fingerprint) request should silently succeed", func(t *testing.T) {
+		createTestTeam(t)
+		defer deleteTestTeam(t)
+
+		firstUUID, err := CreateRequestToJoinTeam(
+			nil, testUUID,
+			"duplicate-request@example.com",
+			fpr.MustParse("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+			now,
+		)
+		assert.NoError(t, err)
+
+		secondUUID, err := CreateRequestToJoinTeam(
+			nil, testUUID,
+			"duplicate-request@example.com",
+			fpr.MustParse("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+			now,
+		)
+		assert.NoError(t, err)
+		assert.Equal(t, *firstUUID, *secondUUID) // return the UUID of the existing, identical req
 	})
 }
 
