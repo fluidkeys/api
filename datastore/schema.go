@@ -77,4 +77,14 @@ var migrateDatabaseStatements = []string{
                 roster TEXT,
                 roster_signature TEXT
     )`,
+
+// allTables is used by the test helper DropAllTheTables to keep track of what tables to
+// tear down after running tests
+var allTables = []string{
+	"single_use_uuids",
+	"email_verifications",
+	"email_key_link",
+	"secrets",
+	"keys",
+	"teams",
 }

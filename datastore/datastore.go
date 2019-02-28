@@ -488,16 +488,7 @@ func DropAllTheTables() error {
 		return fmt.Errorf("blocking delete of database called %s", dbName)
 	}
 
-	var tablesToDrop = []string{
-		"single_use_uuids",
-		"email_verifications",
-		"email_key_link",
-		"secrets",
-		"keys",
-		"teams",
-	}
-
-	for _, table := range tablesToDrop {
+	for _, table := range allTables {
 		_, err := db.Exec("DROP TABLE IF EXISTS " + table)
 		if err != nil {
 			return fmt.Errorf("Error dropping table %s: %v", table, err)
