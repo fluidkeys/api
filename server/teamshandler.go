@@ -112,6 +112,18 @@ func createTeamHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(nil)
 }
 
+func getTeamHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func createRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func listRequestsToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func deleteRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
+}
+
 func checkRosterSignature(requestData v1structs.UpsertTeamRequest, signerKey *pgpkey.PgpKey) error {
 	var keyring openpgp.EntityList = []*openpgp.Entity{&signerKey.Entity}
 
