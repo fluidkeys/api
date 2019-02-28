@@ -1,4 +1,4 @@
-// Copyright 2018 Paul Furley and Ian Drysdale
+// Copyright 2019 Paul Furley and Ian Drysdale
 //
 // This file is part of Fluidkeys Client which makes it simple to use OpenPGP.
 //
@@ -15,22 +15,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Fluidkeys Client.  If not, see <https://www.gnu.org/licenses/>.
 
-package assert
+package pgpkey
 
-import "testing"
+import (
+	"bytes"
 
-// NoError tests that got is nil and calls t.Fatal if not
-func NoError(t *testing.T, got error) {
-	t.Helper()
-	if got != nil {
-		t.Fatalf("got an error but didnt want one '%s'", got)
+	"github.com/fluidkeys/crypto/openpgp"
+)
+
+func (p *PgpKey) MakeArmoredDetachedSignature(dataToSign []byte) (string, error) {
+	err := p.ensureGotDecryptedPrivateKey()
+	if err != nil {
+		return "", err
 	}
-}
 
-// GotError tests that got is an error (not nil) and calls t.Fatal if not
-func GotError(t *testing.T, got error) {
-	t.Helper()
-	if got == nil {
-		t.Fatalf("expected an error, but got none")
+	outputBuf := bytes.NewBuffer(nil)
+	entity := p.Entity
+
+	err = openpgp.ArmoredDetachSign(outputBuf, &entity, bytes.NewReader(dataToSign), nil)
+	if err != nil {
+		return "", err
 	}
+	return outputBuf.String(), nil
 }
