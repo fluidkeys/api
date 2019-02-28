@@ -97,6 +97,26 @@ type UpsertTeamRequest struct {
 	ArmoredDetachedSignature string `json:"armoredDetachedSignature"`
 }
 
+// RequestToJoinTeamRequest is the JSON structure used for requests to the request to join team
+// API enndpoint.
+type RequestToJoinTeamRequest struct {
+	TeamEmail string `json:"teamEmail"`
+}
+
+// ListRequestsToJoinTeamResponse is the JSON structure returned by the list requests to join team
+// API endpoint.
+type ListRequestsToJoinTeamResponse struct {
+	Requests []RequestToJoinTeam `json:"requests"`
+}
+
+// RequestToJoinTeam is the JSON structure containg the data for a request to join a team returned
+// by the list requests to join team API endpoint.
+type RequestToJoinTeam struct {
+	UUID        string `json:"uuid"`
+	Fingerprint string `json:"fingerprint"`
+	Email       string `json:"email"`
+}
+
 // ErrorResponse is the JSON structure returned when the API encounters an
 // error.
 type ErrorResponse struct {
