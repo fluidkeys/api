@@ -273,7 +273,7 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 		assert.Equal(t, "bad SingleUseUUID: single use UUID already used", err.Error())
 	})
 
-	testEndpointRejectsBadJSON(t, "POST", "/v1/keys")
+	testEndpointRejectsBadJSON(t, "POST", "/v1/keys", nil)
 
 	t.Run("valid signed data, brand new key", func(t *testing.T) {
 
@@ -343,7 +343,7 @@ func TestSendSecretHandler(t *testing.T) {
 		assertStatusCode(t, http.StatusCreated, response.Code)
 	})
 
-	testEndpointRejectsBadJSON(t, "POST", "/v1/keys")
+	testEndpointRejectsBadJSON(t, "POST", "/v1/keys", nil)
 
 	t.Run("empty recipientFingerprint", func(t *testing.T) {
 		requestData := v1structs.SendSecretRequest{
@@ -776,13 +776,34 @@ func assertBodyEqualTo(t *testing.T, bodyReader io.Reader, expectedBody string) 
 	assert.Equal(t, string(body), exampledata.ExamplePublicKey4)
 }
 
-func testEndpointRejectsBadJSON(t *testing.T, method string, urlPath string) {
+func testEndpointRejectsUnauthenticated(t *testing.T, method string, urlPath string, requestData interface{}) {
+	// TODO: use this new helper elsewhere too
+	t.Helper()
+
+	t.Run("request doesn't contain signer fingerprint in auth header", func(t *testing.T) {
+
+		response := callAPIWithJSON(
+			t, method, urlPath, requestData, nil) // nil -> unauthenticated
+		assertStatusCode(t, http.StatusBadRequest, response.Code)
+		assertHasJSONErrorDetail(t,
+			response.Body,
+			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
+	})
+}
+
+func testEndpointRejectsBadJSON(t *testing.T, method string, urlPath string,
+	authFingerprint *fingerprint.Fingerprint) {
+
 	t.Helper()
 
 	t.Run("missing JSON content type", func(t *testing.T) {
 		req, err := http.NewRequest(method, urlPath, nil)
 		if err != nil {
 			t.Fatal(err)
+		}
+
+		if authFingerprint != nil {
+			req.Header.Set("Authorization", fmt.Sprintf("tmpfingerprint: %s", authFingerprint.Uri()))
 		}
 
 		mockResponse := httptest.NewRecorder() // ResponseRecorder, satisfies http.ResponseWriter
@@ -797,6 +818,9 @@ func testEndpointRejectsBadJSON(t *testing.T, method string, urlPath string) {
 	t.Run("request content-type header isn't application/json", func(t *testing.T) {
 		req, err := http.NewRequest(method, urlPath, nil)
 		assert.NoError(t, err)
+		if authFingerprint != nil {
+			req.Header.Set("Authorization", fmt.Sprintf("tmpfingerprint: %s", authFingerprint.Uri()))
+		}
 
 		req.Header.Set("Content-Type", "multipart/form-data")
 
@@ -811,6 +835,9 @@ func testEndpointRejectsBadJSON(t *testing.T, method string, urlPath string) {
 	t.Run("json content type but empty request body", func(t *testing.T) {
 		req, err := http.NewRequest("POST", "/v1/secrets", nil)
 		assert.NoError(t, err)
+		if authFingerprint != nil {
+			req.Header.Set("Authorization", fmt.Sprintf("tmpfingerprint: %s", authFingerprint.Uri()))
+		}
 
 		req.Header.Set("Content-Type", "application/json")
 
@@ -825,6 +852,9 @@ func testEndpointRejectsBadJSON(t *testing.T, method string, urlPath string) {
 		req, err := http.NewRequest(method, urlPath, strings.NewReader("invalid-json"))
 		if err != nil {
 			t.Fatal(err)
+		}
+		if authFingerprint != nil {
+			req.Header.Set("Authorization", fmt.Sprintf("tmpfingerprint: %s", authFingerprint.Uri()))
 		}
 		req.Header.Set("Content-Type", "application/json")
 
