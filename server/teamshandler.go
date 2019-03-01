@@ -239,9 +239,6 @@ func createRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func listRequestsToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
-}
-
 func deleteRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 }
 
