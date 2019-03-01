@@ -123,7 +123,7 @@ fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 			"missing Authorization header starting `tmpfingerprint: OPENPGP4FPR:`")
 	})
 
-	testEndpointRejectsBadJSON(t, "POST", "/v1/teams")
+	testEndpointRejectsBadJSON(t, "POST", "/v1/teams", nil)
 
 	t.Run("missing json field", func(t *testing.T) {
 		t.Run("teamRoster", func(t *testing.T) {
