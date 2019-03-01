@@ -104,16 +104,16 @@ func CreateRequestToJoinTeam(
 		return nil, ErrNotFound
 	}
 
-	existingRequest, err := getRequestToJoinTeam(txn, teamUUID, email)
+	existingRequest, err := GetRequestToJoinTeam(txn, teamUUID, email)
 	if err != nil && err != ErrNotFound {
 		return nil, fmt.Errorf("error looking for existing request: %v", err)
 	}
 
-	if existingRequest != nil && existingRequest.fingerprint == fingerprint {
+	if existingRequest != nil && existingRequest.Fingerprint == fingerprint {
 		// got an existing, identical request. rather than creating a new one, just return the
 		// UUID of the existing one
-		return &existingRequest.uuid, nil
-	} else if existingRequest != nil && existingRequest.fingerprint != fingerprint {
+		return &existingRequest.UUID, nil
+	} else if existingRequest != nil && existingRequest.Fingerprint != fingerprint {
 		// got an existing request for the same {team, email} combination but with a different
 		// fingerprint. reject it.
 		return nil, fmt.Errorf("existing request for {team, email}")
@@ -138,22 +138,24 @@ func CreateRequestToJoinTeam(
 	return &newRequestUUID, err
 }
 
-func getRequestToJoinTeam(txn *sql.Tx, teamUUID uuid.UUID, email string) (
-	*requestToJoinTeam, error) {
+// GetRequestToJoinTeam searches for an existing request for the given team UUID and email
+// address combination.
+func GetRequestToJoinTeam(txn *sql.Tx, teamUUID uuid.UUID, email string) (
+	*RequestToJoinTeam, error) {
 
 	query := `SELECT uuid, created_at, email, fingerprint
 		        FROM team_join_requests
 	            WHERE team_uuid=$1
 	            AND email=$2`
 
-	request := requestToJoinTeam{}
+	request := RequestToJoinTeam{}
 
 	var fingerprintString string
 
 	err := transactionOrDatabase(txn).QueryRow(query, teamUUID, email).Scan(
-		&request.uuid,
-		&request.createdAt,
-		&request.email,
+		&request.UUID,
+		&request.CreatedAt,
+		&request.Email,
 		&fingerprintString,
 	)
 	if err == sql.ErrNoRows {
@@ -163,7 +165,7 @@ func getRequestToJoinTeam(txn *sql.Tx, teamUUID uuid.UUID, email string) (
 		return nil, err
 	}
 
-	if request.fingerprint, err = parseDbFormat(fingerprintString); err != nil {
+	if request.Fingerprint, err = parseDbFormat(fingerprintString); err != nil {
 		return nil, fmt.Errorf("got bad fingerprint from database: %v", fingerprintString)
 	}
 
@@ -180,11 +182,12 @@ type Team struct {
 	CreatedAt       time.Time
 }
 
-type requestToJoinTeam struct {
-	uuid        uuid.UUID
-	createdAt   time.Time
-	email       string
-	fingerprint fpr.Fingerprint
+// RequestToJoinTeam represents a request to join a team in the database.
+type RequestToJoinTeam struct {
+	UUID        uuid.UUID
+	CreatedAt   time.Time
+	Email       string
+	Fingerprint fpr.Fingerprint
 }
 
 // ErrNotFound indicates that the requested item wasn't found in the database (but the query was
