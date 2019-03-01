@@ -253,8 +253,3 @@ func checkRosterSignature(requestData v1structs.UpsertTeamRequest, signerKey *pg
 	return err
 }
 
-var errIdenticalRequestAlreadyExists = fmt.Errorf(
-	"request to join team already exists with the same email and fingerprint")
-
-var errConflictingRequestAlreadyExists = fmt.Errorf(
-	"request to join team already exists for that email with a different fingerprint")

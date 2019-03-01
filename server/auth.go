@@ -50,7 +50,6 @@ func getAuthorizedUserPublicKey(r *http.Request) (*pgpkey.PgpKey, error) {
 	return key, nil
 }
 
-var errAuthKeyNotFound = fmt.Errorf("invalid authorization")
 // validateDataSignedByKey checks 2 things about the given data:
 // 1. that the signature is valid
 // 2. that the signature came from `key`
