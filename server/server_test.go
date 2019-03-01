@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 
 func TestPingEndpoint(t *testing.T) {
 	t.Run("test ping endpoint", func(t *testing.T) {
-		mockResponse := callAPI(t, "GET", "/v1/ping/foo")
+		mockResponse := callAPI(t, "GET", "/v1/ping/foo", nil)
 
 		assertStatusCode(t, http.StatusOK, mockResponse.Code)
 
@@ -76,7 +76,7 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 
 	t.Run("JSON endpoint", func(t *testing.T) {
 		t.Run("with no match on email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/missing@example.com/key")
+			response := callAPI(t, "GET", "/v1/email/missing@example.com/key", nil)
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
 			assertHasJSONErrorDetail(t, response.Body,
@@ -84,7 +84,7 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 		})
 
 		t.Run("with match on email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4@example.com/key")
+			response := callAPI(t, "GET", "/v1/email/test4@example.com/key", nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 
 			responseData := v1structs.GetPublicKeyResponse{}
@@ -93,24 +93,24 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 		})
 
 		t.Run("with + in email, request not urlencoded", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key")
+			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key", nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
 		t.Run("with + in email, request urlencoded", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key")
+			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key", nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
 		t.Run("with uppercase query for lowercase email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/TEST4@example.com/key")
+			response := callAPI(t, "GET", "/v1/email/TEST4@example.com/key", nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 	})
 
 	t.Run("ascii-armored endpoint", func(t *testing.T) {
 		t.Run("with no match on email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/missing@example.com/key.asc")
+			response := callAPI(t, "GET", "/v1/email/missing@example.com/key.asc", nil)
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
 			assertHasJSONErrorDetail(t, response.Body,
@@ -118,18 +118,18 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 		})
 
 		t.Run("with match on email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4@example.com/key.asc")
+			response := callAPI(t, "GET", "/v1/email/test4@example.com/key.asc", nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 			assertBodyEqualTo(t, response.Body, exampledata.ExamplePublicKey4)
 		})
 
 		t.Run("with + in email, request not urlencoded", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key.asc")
+			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key.asc", nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
 		t.Run("with + in email, request urlencoded", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key.asc")
+			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key.asc", nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 	})
@@ -142,7 +142,7 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 
 	t.Run("JSON endpoint", func(t *testing.T) {
 		t.Run("with no matching fingerprint", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex())
+			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex(), nil)
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
 			assertHasJSONErrorDetail(t, response.Body,
@@ -151,7 +151,7 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 		})
 
 		t.Run("with a matching fingerprint", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex())
+			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex(), nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 
 			responseData := v1structs.GetPublicKeyResponse{}
@@ -162,7 +162,9 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 
 	t.Run("ascii-armored endpoint", func(t *testing.T) {
 		t.Run("with no matching fingerprint", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex()+".asc")
+			response := callAPI(
+				t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex()+".asc", nil,
+			)
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
 			assertHasJSONErrorDetail(t, response.Body,
@@ -171,7 +173,9 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 		})
 
 		t.Run("with a matching fingerprint", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex()+".asc")
+			response := callAPI(
+				t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex()+".asc", nil,
+			)
 			assertStatusCode(t, http.StatusOK, response.Code)
 
 			assertBodyEqualTo(t, response.Body, exampledata.ExamplePublicKey4)
@@ -682,7 +686,9 @@ func TestDeleteSecretHandler(t *testing.T) {
 	teardown()
 }
 
-func callAPI(t *testing.T, method string, path string) *httptest.ResponseRecorder {
+func callAPI(t *testing.T, method string, path string, authFingerprint *fingerprint.Fingerprint,
+) *httptest.ResponseRecorder {
+
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	t.Helper()
@@ -690,6 +696,10 @@ func callAPI(t *testing.T, method string, path string) *httptest.ResponseRecorde
 	req, err := http.NewRequest(method, path, nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if authFingerprint != nil {
+		req.Header.Set("Authorization", fmt.Sprintf("tmpfingerprint: %s", authFingerprint.Uri()))
 	}
 
 	recorder := httptest.NewRecorder() // create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.

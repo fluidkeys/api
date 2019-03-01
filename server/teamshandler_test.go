@@ -355,7 +355,7 @@ func TestGetTeamHandler(t *testing.T) {
 	defer teardown()
 
 	t.Run("for existing team", func(t *testing.T) {
-		mockResponse := callAPI(t, "GET", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8")
+		mockResponse := callAPI(t, "GET", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8", nil)
 
 		t.Run("status code 200", func(t *testing.T) {
 			assertStatusCode(t, http.StatusOK, mockResponse.Code)
@@ -377,7 +377,7 @@ func TestGetTeamHandler(t *testing.T) {
 
 	t.Run("for non existent team", func(t *testing.T) {
 		// this UUID doesn't exist
-		mockResponse := callAPI(t, "GET", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810")
+		mockResponse := callAPI(t, "GET", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810", nil)
 
 		t.Run("status code 404", func(t *testing.T) {
 			assertStatusCode(t, http.StatusNotFound, mockResponse.Code)
@@ -396,7 +396,7 @@ func TestGetTeamHandler(t *testing.T) {
 			datastore.DeleteTeam(nil, badRosterTeam.UUID)
 		}()
 
-		mockResponse := callAPI(t, "GET", "/v1/team/"+badRosterTeam.UUID.String())
+		mockResponse := callAPI(t, "GET", "/v1/team/"+badRosterTeam.UUID.String(), nil)
 
 		t.Run("status code 500", func(t *testing.T) {
 			assertStatusCode(t, http.StatusInternalServerError, mockResponse.Code)
