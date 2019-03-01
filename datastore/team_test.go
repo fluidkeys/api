@@ -128,6 +128,40 @@ func TestGetRequestToJoinTeam(t *testing.T) {
 	})
 }
 
+func TestGetRequestsToJoinTeam(t *testing.T) {
+	now := time.Date(2019, 6, 19, 16, 35, 41, 0, time.UTC)
+
+	t.Run("with existing request for team and email", func(t *testing.T) {
+		createTestTeam(t)
+		defer deleteTestTeam(t)
+
+		fingerprint := fpr.MustParse("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+
+		createdUUID1, err := CreateRequestToJoinTeam(
+			nil, testUUID, "test@example.com", fingerprint, now)
+		assert.NoError(t, err)
+
+		fingerprint2 := fpr.MustParse("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
+
+		createdUUID2, err := CreateRequestToJoinTeam(
+			nil, testUUID, "test2@example.com", fingerprint2, now)
+		assert.NoError(t, err)
+
+		got, err := GetRequestsToJoinTeam(nil, testUUID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(got))
+
+		assert.Equal(t, createdUUID1.String(), got[0].UUID.String())
+		assert.Equal(t, "test@example.com", got[0].Email)
+		assert.Equal(t, fingerprint, got[0].Fingerprint)
+
+		assert.Equal(t, createdUUID2.String(), got[1].UUID.String())
+		assert.Equal(t, "test2@example.com", got[1].Email)
+		assert.Equal(t, fingerprint2, got[1].Fingerprint)
+	})
+}
+
 func TestCreateRequestToJoinTeam(t *testing.T) {
 	t.Run("when team exists and request is OK", func(t *testing.T) {
 		createTestTeam(t)
