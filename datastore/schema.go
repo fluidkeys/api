@@ -85,8 +85,9 @@ var migrateDatabaseStatements = []string{
                 email citext NOT NULL,
                 fingerprint VARCHAR NOT NULL,
 
-                team_uuid UUID NOT NULL REFERENCES teams(uuid) ON DELETE CASCADE
+                team_uuid UUID NOT NULL REFERENCES teams(uuid) ON DELETE CASCADE,
 
+                UNIQUE (team_uuid, email)
     )`,
 }
 
