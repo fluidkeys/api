@@ -508,6 +508,7 @@ func transactionOrDatabase(txn *sql.Tx) txDbInterface {
 type txDbInterface interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 	QueryRow(query string, args ...interface{}) *sql.Row
+	Query(query string, args ...interface{}) (*sql.Rows, error)
 }
 
 func dbFormat(fingerprint fpr.Fingerprint) string {

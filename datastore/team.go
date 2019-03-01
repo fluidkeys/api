@@ -172,6 +172,45 @@ func GetRequestToJoinTeam(txn *sql.Tx, teamUUID uuid.UUID, email string) (
 	return &request, nil
 }
 
+// GetRequestsToJoinTeam returns a slice of RequestToJoinTeams.
+func GetRequestsToJoinTeam(txn *sql.Tx, teamUUID uuid.UUID) ([]RequestToJoinTeam, error) {
+	query := `SELECT uuid, created_at, email, fingerprint
+		        FROM team_join_requests
+	            WHERE team_uuid=$1`
+
+	rows, err := transactionOrDatabase(txn).Query(query, teamUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	requestsToJoinTeam := make([]RequestToJoinTeam, 0)
+
+	defer rows.Close()
+	for rows.Next() {
+		var requestToJoinTeam RequestToJoinTeam
+		var fingerprintString string
+		if err := rows.Scan(
+			&requestToJoinTeam.UUID,
+			&requestToJoinTeam.CreatedAt,
+			&requestToJoinTeam.Email,
+			&fingerprintString,
+		); err != nil {
+			return nil, err
+		}
+		if requestToJoinTeam.Fingerprint, err = parseDbFormat(fingerprintString); err != nil {
+			return nil, fmt.Errorf("got bad fingerprint from database: %v", fingerprintString)
+		}
+		requestsToJoinTeam = append(requestsToJoinTeam, requestToJoinTeam)
+	}
+	err = rows.Err()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return requestsToJoinTeam, nil
+}
+
 // Team represents a team in the database
 type Team struct {
 	UUID   uuid.UUID
