@@ -13,6 +13,7 @@ migrate:
 .PHONY: test
 test:
 	go test -v -failfast ./...
+	find . -name '*.go' -not -path './vendor/*' -exec golint {} \;
 
 .PHONY: jenkins_deploy_to_heroku
 jenkins_deploy_to_heroku:
