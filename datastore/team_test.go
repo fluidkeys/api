@@ -160,6 +160,25 @@ func TestGetRequestsToJoinTeam(t *testing.T) {
 		assert.Equal(t, "test2@example.com", got[1].Email)
 		assert.Equal(t, fingerprint2, got[1].Fingerprint)
 	})
+
+	t.Run("with team existing but no requests", func(t *testing.T) {
+		createTestTeam(t)
+		defer deleteTestTeam(t)
+
+		got, err := GetRequestsToJoinTeam(nil, testUUID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 0, len(got))
+	})
+
+	t.Run("with non-existent team, returns empty slice with no error", func(t *testing.T) {
+		nonExistentTeamUUID := uuid.Must(uuid.NewV4())
+
+		got, err := GetRequestsToJoinTeam(nil, nonExistentTeamUUID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 0, len(got))
+	})
 }
 
 func TestCreateRequestToJoinTeam(t *testing.T) {
