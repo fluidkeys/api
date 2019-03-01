@@ -87,6 +87,47 @@ func TestDeleteTeam(t *testing.T) {
 	})
 }
 
+func TestGetRequestToJoinTeam(t *testing.T) {
+	now := time.Date(2019, 6, 19, 16, 35, 41, 0, time.UTC)
+
+	t.Run("with existing request for team and email", func(t *testing.T) {
+		createTestTeam(t)
+		defer deleteTestTeam(t)
+
+		fingerprint := fpr.MustParse("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+
+		createdUUID, err := CreateRequestToJoinTeam(
+			nil, testUUID, "test@example.com", fingerprint, now)
+		assert.NoError(t, err)
+
+		got, err := GetRequestToJoinTeam(nil, testUUID, "test@example.com")
+		assert.NoError(t, err)
+
+		assert.Equal(t, createdUUID.String(), got.UUID.String())
+		assert.Equal(t, "test@example.com", got.Email)
+		assert.Equal(t, fingerprint, got.Fingerprint)
+
+		if !now.Equal(got.CreatedAt) {
+			t.Fatalf("expected CreatedAt `%v`, got `%v`", now, got.CreatedAt)
+		}
+	})
+
+	t.Run("with non existent team", func(t *testing.T) {
+		_, err := GetRequestToJoinTeam(nil, testUUID, "test@example.com")
+		assert.GotError(t, err)
+		assert.Equal(t, ErrNotFound, err)
+	})
+
+	t.Run("with matching team but no email", func(t *testing.T) {
+		createTestTeam(t)
+		defer deleteTestTeam(t)
+
+		_, err := GetRequestToJoinTeam(nil, testUUID, "no-such-email@example.com")
+		assert.GotError(t, err)
+		assert.Equal(t, ErrNotFound, err)
+	})
+}
+
 func TestCreateRequestToJoinTeam(t *testing.T) {
 	t.Run("when team exists and request is OK", func(t *testing.T) {
 		createTestTeam(t)
