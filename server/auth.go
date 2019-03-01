@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/fluidkeys/api/datastore"
+	"github.com/fluidkeys/crypto/openpgp"
+	"github.com/fluidkeys/crypto/openpgp/errors"
 	"github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
 )
@@ -49,3 +51,25 @@ func getAuthorizedUserPublicKey(r *http.Request) (*pgpkey.PgpKey, error) {
 }
 
 var errAuthKeyNotFound = fmt.Errorf("invalid authorization")
+// validateDataSignedByKey checks 2 things about the given data:
+// 1. that the signature is valid
+// 2. that the signature came from `key`
+//    - this is achieved by creating a keyring with a single key in it. if the data is
+//      validly signed by *another* key it will fail, since that other key isn't in the supplied
+//      keyring.
+func validateDataSignedByKey(data string, armoredDetachedSignature string, key *pgpkey.PgpKey) error {
+	var keyring openpgp.EntityList = []*openpgp.Entity{&key.Entity}
+
+	_, err := openpgp.CheckArmoredDetachedSignature(
+		keyring,
+		strings.NewReader(data),
+		strings.NewReader(armoredDetachedSignature),
+	)
+	if err == errors.ErrUnknownIssuer {
+		return errSignedByWrongKey
+	} else if err != nil {
+		return errBadSignature
+	}
+
+	return nil
+}
