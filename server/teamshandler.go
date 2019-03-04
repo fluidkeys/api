@@ -10,8 +10,6 @@ import (
 
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/v1structs"
-	"github.com/fluidkeys/crypto/openpgp"
-	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/fluidkeys/fluidkeys/team"
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
@@ -50,7 +48,11 @@ func createTeamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = checkRosterSignature(requestData, apparentSignerKey); err != nil {
+	if err = validateDataSignedByKey(
+		requestData.TeamRoster,
+		requestData.ArmoredDetachedSignature,
+		apparentSignerKey); err != nil {
+
 		log.Printf("roster signature verification failed: %v", err)
 		writeJsonError(w, fmt.Errorf("signature verification failed"), http.StatusBadRequest)
 		return
@@ -239,25 +241,5 @@ func createRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func listRequestsToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
-}
-
 func deleteRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 }
-
-func checkRosterSignature(requestData v1structs.UpsertTeamRequest, signerKey *pgpkey.PgpKey) error {
-	var keyring openpgp.EntityList = []*openpgp.Entity{&signerKey.Entity}
-
-	_, err := openpgp.CheckArmoredDetachedSignature(
-		keyring,
-		strings.NewReader(requestData.TeamRoster),
-		strings.NewReader(requestData.ArmoredDetachedSignature),
-	)
-	return err
-}
-
-var errIdenticalRequestAlreadyExists = fmt.Errorf(
-	"request to join team already exists with the same email and fingerprint")
-
-var errConflictingRequestAlreadyExists = fmt.Errorf(
-	"request to join team already exists for that email with a different fingerprint")
