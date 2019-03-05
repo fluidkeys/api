@@ -8,9 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
-
-	"github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/gofrs/uuid"
 	"github.com/natefinch/atomic"
 )
@@ -46,6 +45,12 @@ func SignAndSave(team Team, fluidkeysDirectory string, signingKey *pgpkey.PgpKey
 	if err != nil {
 		return "", "", fmt.Errorf("invalid team: %v", err)
 	}
+
+	if !team.IsAdmin(signingKey.Fingerprint()) {
+		return "", "", fmt.Errorf("can't sign with key %s that's not an admin of the team",
+			signingKey.Fingerprint())
+	}
+
 	rosterDirectory := filepath.Join(
 		getTeamDirectory(fluidkeysDirectory), // ~/.config/fluidkeys/teams
 		team.subDirectory(),                  // fluidkeys-inc-4367436743
@@ -93,21 +98,41 @@ func (t *Team) Validate() error {
 		emailsSeen[person.Email] = true
 	}
 
-	fingerprintsSeen := map[fingerprint.Fingerprint]bool{}
+	fingerprintsSeen := map[fpr.Fingerprint]bool{}
 	for _, person := range t.People {
 		if _, alreadySeen := fingerprintsSeen[person.Fingerprint]; alreadySeen {
 			return fmt.Errorf("fingerprint listed more than once: %s", person.Fingerprint)
 		}
 		fingerprintsSeen[person.Fingerprint] = true
 	}
+
+	var numberOfAdmins int
+	for _, person := range t.People {
+		if person.IsAdmin {
+			numberOfAdmins++
+		}
+	}
+	if numberOfAdmins == 0 {
+		return fmt.Errorf("team has no administrators")
+	}
 	return nil
+}
+
+// IsAdmin takes a given fingerprint and returns whether they are an administor of the team
+func (t Team) IsAdmin(fingerprint fpr.Fingerprint) bool {
+	for _, person := range t.People {
+		if person.IsAdmin && person.Fingerprint == fingerprint {
+			return true
+		}
+	}
+	return false
 }
 
 // GetPersonForFingerprint takes a fingerprint and returns the person in the team with the
 // matching fingperint.
-func (t *Team) GetPersonForFingerprint(fpr fingerprint.Fingerprint) (*Person, error) {
+func (t *Team) GetPersonForFingerprint(fingerprint fpr.Fingerprint) (*Person, error) {
 	for _, person := range t.People {
-		if person.Fingerprint == fpr {
+		if person.Fingerprint == fingerprint {
 			return &person, nil
 		}
 	}
@@ -179,17 +204,25 @@ type Team struct {
 }
 
 // Fingerprints returns the key fingerprints for all people in the team
-func (t *Team) Fingerprints() []fingerprint.Fingerprint {
-	fps := []fingerprint.Fingerprint{}
+func (t *Team) Fingerprints() []fpr.Fingerprint {
+	fingerprints := []fpr.Fingerprint{}
 
 	for _, person := range t.People {
-		fps = append(fps, person.Fingerprint)
+		fingerprints = append(fingerprints, person.Fingerprint)
 	}
-	return fps
+	return fingerprints
 }
 
 // Person represents a human team member
 type Person struct {
-	Email       string                  `toml:"email"`
-	Fingerprint fingerprint.Fingerprint `toml:"fingerprint"`
+	Email       string          `toml:"email"`
+	Fingerprint fpr.Fingerprint `toml:"fingerprint"`
+	IsAdmin     bool            `toml:"is_admin"`
+}
+
+// RequestToJoinTeam represents a request to join a team
+type RequestToJoinTeam struct {
+	UUID        uuid.UUID
+	Email       string
+	Fingerprint fpr.Fingerprint
 }
