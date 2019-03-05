@@ -47,10 +47,12 @@ uuid = "74bb40b4-3510-11e9-968e-53c38df634be"
 [[person]]
 email = "test4@example.com"
 fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
 
 [[person]]
 email = "b@example.com"
 fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+is_admin = false
 `
 
 	goodSignature, err := makeArmoredDetachedSignature([]byte(goodRoster), unlockedKey)
@@ -211,10 +213,12 @@ uuid = "972dce6a-3532-11e9-b8df-f32e04ceb372"
 [[person]]
 email = "test4@example.com"
 fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
 
 [[person]]
 email = "test4@example.com"
 fingerprint = "BBBB BBBB BBBB BBBB BBBB  BBBB BBBB BBBB BBBB BBBB"
+is_admin = false
 `
 
 		fingerprintTwice := `
@@ -223,10 +227,12 @@ uuid = "9ca4a81e-3532-11e9-9145-a3dd42867f07"
 [[person]]
 email = "test4@example.com"
 fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
 
 [[person]]
 email = "b@example.com"
 fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = false
 `
 
 		signingKeyNotInRoster := `
@@ -235,6 +241,7 @@ uuid = "344672d2-35e8-11e9-ade3-93c56fb48f08"
 [[person]]
 email = "test4@example.com"
 fingerprint = "AAAA AAAA AAAA AAAA AAAA  AAAA AAAA AAAA AAAA AAAA"
+is_admin = true
 `
 
 		unverifiedEmailInRoster := `
@@ -243,6 +250,7 @@ uuid = "113ab4ba-35e8-11e9-8aa6-f721c118df12"
 [[person]]
 email = "unverified-email@example.com"
 fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
 `
 
 		invalidRosterTests := []struct {
@@ -310,10 +318,12 @@ uuid = "` + duplicateUUID.String() + `"
 [[person]]
 email = "test4@example.com"
 fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
 
 [[person]]
 email = "b@example.com"
 fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+is_admin = false
 `
 
 		signature, err := makeArmoredDetachedSignature([]byte(duplicatedRoster), unlockedKey)

@@ -26,7 +26,7 @@
   revision = "2018-09-13"
 
 [[projects]]
-  digest = "1:da8bdcae08243bcaff575c0a4ae6a1e48c568be965007bfdb22cc8ecccf70407"
+  digest = "1:aefa0d46b968db81f4efde71670598fe9a59e98da57dcfb303d1d0652c42a27b"
   name = "github.com/fluidkeys/fluidkeys"
   packages = [
     "assert",
@@ -41,7 +41,7 @@
     "team",
   ]
   pruneopts = "UT"
-  revision = "0eb053c10825f633e05de5c1e2612af74fdff420"
+  revision = "4288d559eb02583052f1dbf89d5d2e8b0810342c"
 
 [[projects]]
   digest = "1:c594a691090b434d55c67f6cc8e326ef5ba49452abc059821bd5d4fd4cdef08c"
