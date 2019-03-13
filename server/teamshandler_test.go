@@ -178,13 +178,7 @@ is_admin = false
 		fingerprintNotInAPI := keyNotInAPI.Fingerprint()
 		assert.NoError(t, err)
 
-		signature, err := makeArmoredDetachedSignature([]byte(goodRoster), keyNotInAPI)
-		assert.NoError(t, err)
-
-		requestData := v1structs.UpsertTeamRequest{
-			TeamRoster:               goodRoster,
-			ArmoredDetachedSignature: signature,
-		}
+		requestData := makeSignedRequest(t, goodRoster, keyNotInAPI)
 
 		response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &fingerprintNotInAPI)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
@@ -313,13 +307,7 @@ is_admin = true
 		for _, test := range invalidRosterTests {
 			t.Run(test.testName, func(t *testing.T) {
 
-				signature, err := makeArmoredDetachedSignature([]byte(test.roster), unlockedKey)
-				assert.NoError(t, err)
-
-				requestData := v1structs.UpsertTeamRequest{
-					TeamRoster:               test.roster,
-					ArmoredDetachedSignature: signature,
-				}
+				requestData := makeSignedRequest(t, test.roster, unlockedKey)
 
 				response := callAPIWithJSON(
 					t, "POST", "/v1/teams", requestData, &signerFingerprint)
@@ -345,13 +333,7 @@ fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 is_admin = false
 `
 
-		signature, err := makeArmoredDetachedSignature([]byte(duplicatedRoster), unlockedKey)
-		assert.NoError(t, err)
-
-		requestData := v1structs.UpsertTeamRequest{
-			TeamRoster:               duplicatedRoster,
-			ArmoredDetachedSignature: signature,
-		}
+		requestData := makeSignedRequest(t, duplicatedRoster, unlockedKey)
 
 		response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &signerFingerprint)
 		assertStatusCode(t, http.StatusCreated, response.Code)
@@ -360,6 +342,20 @@ is_admin = false
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body, fmt.Sprintf("team with UUID %s already exists", duplicateUUID))
 	})
+}
+
+func makeSignedRequest(t *testing.T, roster string, privateKey *pgpkey.PgpKey) v1structs.UpsertTeamRequest {
+	t.Helper()
+
+	sig, err := makeArmoredDetachedSignature([]byte(roster), privateKey)
+	assert.NoError(t, err)
+
+	requestData := v1structs.UpsertTeamRequest{
+		TeamRoster:               roster,
+		ArmoredDetachedSignature: sig,
+	}
+
+	return requestData
 }
 
 func TestGetTeamHandler(t *testing.T) {
