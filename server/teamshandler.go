@@ -275,6 +275,11 @@ func createRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func getTeamRosterHandler(w http.ResponseWriter, r *http.Request) {
+	writeJsonError(w, fmt.Errorf("not implemented"), http.StatusNotFound)
+	return
+}
+
 func deleteRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 }
 
