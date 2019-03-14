@@ -530,8 +530,8 @@ func TestGetTeamHandler(t *testing.T) {
 			assertStatusCode(t, http.StatusOK, mockResponse.Code)
 		})
 
-		t.Run("response has JSON content type", func(t *testing.T) {
-			// TODO: check server returned content-type: application/json (and elsewhere!)
+		t.Run("response has json content type", func(t *testing.T) {
+			assert.Equal(t, "application/json", mockResponse.Header().Get("content-type"))
 		})
 
 		t.Run("response body has name in JSON", func(t *testing.T) {
@@ -809,7 +809,7 @@ func TestGetTeamRoster(t *testing.T) {
 		})
 
 		t.Run("response has json content type", func(t *testing.T) {
-			// assert.Equal(t, "application/json", response.Header()["content-type"]) TODO
+			assert.Equal(t, "application/json", response.Header().Get("content-type"))
 		})
 
 		t.Run("body is JSON which decodes as GetTeamRosterResponse", func(t *testing.T) {

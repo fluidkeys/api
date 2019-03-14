@@ -89,8 +89,8 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
-		t.Run("response has JSON content type", func(t *testing.T) {
-			// TODO: check server returned content-type: application/json (and elsewhere!)
+		t.Run("response has json content type", func(t *testing.T) {
+			assert.Equal(t, "application/json", response.Header().Get("content-type"))
 		})
 
 		t.Run("response body has requests JSON", func(t *testing.T) {
