@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -276,11 +277,68 @@ func createRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTeamRosterHandler(w http.ResponseWriter, r *http.Request) {
-	writeJsonError(w, fmt.Errorf("not implemented"), http.StatusNotFound)
-	return
+	teamUUID, err := uuid.FromString(mux.Vars(r)["teamUUID"])
+	if err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	requesterKey, err := getAuthorizedUserPublicKey(r)
+	if err == errAuthKeyNotFound {
+		writeJsonError(w,
+			fmt.Errorf("requesting key has not been uploaded"),
+			http.StatusBadRequest)
+		return
+	} else if err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	dbTeam, err := datastore.GetTeam(nil, teamUUID)
+	if err == datastore.ErrNotFound {
+		writeJsonError(w, err, http.StatusNotFound)
+		return
+	} else if err != nil {
+		writeJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	team, err := team.Parse(strings.NewReader(dbTeam.Roster))
+	if err != nil {
+		writeJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	if _, err := team.GetPersonForFingerprint(requesterKey.Fingerprint()); err != nil {
+		writeJsonError(w,
+			fmt.Errorf("requesting key is not in the team"),
+			http.StatusForbidden)
+		return
+
+	}
+
+	rosterAndSig := v1structs.TeamRosterAndSignature{
+		TeamRoster:               dbTeam.Roster,
+		ArmoredDetachedSignature: dbTeam.RosterSignature,
+	}
+
+	plaintextJSON, err := json.Marshal(rosterAndSig)
+	if err != nil {
+		writeJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+	encryptedJSON, err := encryptStringToArmor(string(plaintextJSON), requesterKey)
+
+	responseData := v1structs.GetTeamRosterResponse{
+		EncryptedJSON: encryptedJSON,
+	}
+
+	writeJsonResponse(w, responseData)
 }
 
 func deleteRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
+	writeJsonError(w, fmt.Errorf("not implemented"), http.StatusNotFound)
+	return
 }
 
 var (

@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -753,4 +754,111 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 				"already got request to join team with that email and fingerprint")
 		})
 	})
+}
+
+func TestGetTeamRoster(t *testing.T) {
+	now := time.Date(2019, 2, 28, 16, 35, 45, 0, time.UTC)
+	roster := `
+            name = "Example"
+			uuid = "18d12a10-4678-11e9-ba93-2385e4a50ded"
+
+			[[ person ]]
+			email = "test4@example.com"
+            fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"`
+
+	team := datastore.Team{
+		UUID:            uuid.Must(uuid.FromString("18d12a10-4678-11e9-ba93-2385e4a50ded")),
+		Roster:          roster,
+		RosterSignature: "fake signature",
+		CreatedAt:       now,
+	}
+
+	setup := func() {
+		assert.NoError(t, datastore.UpsertTeam(nil, team))
+
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
+		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey2))
+	}
+
+	teardown := func() {
+		_, err := datastore.DeleteTeam(nil, team.UUID)
+		assert.NoError(t, err)
+
+		_, err = datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.NoError(t, err)
+
+		_, err = datastore.DeletePublicKey(exampledata.ExampleFingerprint2)
+		assert.NoError(t, err)
+	}
+
+	setup()
+	defer teardown()
+
+	t.Run("get roster for a valid team member", func(t *testing.T) {
+		responseData := v1structs.GetTeamRosterResponse{} // placeholder
+
+		response := callAPI(t,
+			"GET", fmt.Sprintf("/v1/team/%s/roster", team.UUID), &exampledata.ExampleFingerprint4,
+		)
+
+		t.Run("returns HTTP 200 OK", func(t *testing.T) {
+			assertStatusCode(t, http.StatusOK, response.Code)
+		})
+
+		t.Run("response has json content type", func(t *testing.T) {
+			// assert.Equal(t, "application/json", response.Header()["content-type"]) TODO
+		})
+
+		t.Run("body is JSON which decodes as GetTeamRosterResponse", func(t *testing.T) {
+			err := json.NewDecoder(response.Body).Decode(&responseData)
+			assert.NoError(t, err)
+		})
+
+		t.Run("encryptedJSON decrypts as valid, correct JSON", func(t *testing.T) {
+			unlockedKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(
+				exampledata.ExamplePrivateKey4, "test4",
+			)
+			assert.NoError(t, err)
+
+			ciphertext, err := decryptMessage(responseData.EncryptedJSON, unlockedKey)
+
+			// decrypted JSON decodes as TeamRosterAndSignature?
+			teamRosterAndSignature := v1structs.TeamRosterAndSignature{}
+			err = json.NewDecoder(ciphertext).Decode(&teamRosterAndSignature)
+			assert.NoError(t, err)
+
+			// decrypted roster matches?
+			assert.Equal(t, team.Roster, teamRosterAndSignature.TeamRoster)
+
+			// decrypted signature matches?
+			assert.Equal(t, team.RosterSignature, teamRosterAndSignature.ArmoredDetachedSignature)
+		})
+
+	})
+
+	testEndpointRejectsUnauthenticated(t,
+		"GET",
+		fmt.Sprintf("/v1/team/%s/roster", team.UUID),
+		struct{}{}) // TODO: make this test helper support requestData of `nil`
+
+	t.Run("for non existent team", func(t *testing.T) {
+		response := callAPI(t,
+			"GET", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810/roster", // UUID does not exist
+			&exampledata.ExampleFingerprint4,
+		)
+
+		t.Run("status code 404", func(t *testing.T) {
+			assertStatusCode(t, http.StatusNotFound, response.Code)
+		})
+	})
+
+	t.Run("request key is not in the roster returns 403 forbidden", func(t *testing.T) {
+		response := callAPI(t,
+			"GET", fmt.Sprintf("/v1/team/%s/roster", team.UUID), &exampledata.ExampleFingerprint2,
+		)
+
+		assertStatusCode(t, http.StatusForbidden, response.Code)
+		assertHasJSONErrorDetail(t, response.Body, "requesting key is not in the team")
+	})
+
 }
