@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 
 func TestPingEndpoint(t *testing.T) {
 	t.Run("test ping endpoint", func(t *testing.T) {
-		mockResponse := callAPI(t, "GET", "/v1/ping/foo", nil)
+		mockResponse := callAPI(t, "GET", "/v1/ping/foo", nil, nil)
 
 		assertStatusCode(t, http.StatusOK, mockResponse.Code)
 
@@ -76,7 +76,7 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 
 	t.Run("JSON endpoint", func(t *testing.T) {
 		t.Run("with no match on email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/missing@example.com/key", nil)
+			response := callAPI(t, "GET", "/v1/email/missing@example.com/key", nil, nil)
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
 			assertHasJSONErrorDetail(t, response.Body,
@@ -84,7 +84,7 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 		})
 
 		t.Run("with match on email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4@example.com/key", nil)
+			response := callAPI(t, "GET", "/v1/email/test4@example.com/key", nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 
 			responseData := v1structs.GetPublicKeyResponse{}
@@ -93,24 +93,24 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 		})
 
 		t.Run("with + in email, request not urlencoded", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key", nil)
+			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key", nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
 		t.Run("with + in email, request urlencoded", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key", nil)
+			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key", nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
 		t.Run("with uppercase query for lowercase email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/TEST4@example.com/key", nil)
+			response := callAPI(t, "GET", "/v1/email/TEST4@example.com/key", nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 	})
 
 	t.Run("ascii-armored endpoint", func(t *testing.T) {
 		t.Run("with no match on email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/missing@example.com/key.asc", nil)
+			response := callAPI(t, "GET", "/v1/email/missing@example.com/key.asc", nil, nil)
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
 			assertHasJSONErrorDetail(t, response.Body,
@@ -118,18 +118,18 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 		})
 
 		t.Run("with match on email", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4@example.com/key.asc", nil)
+			response := callAPI(t, "GET", "/v1/email/test4@example.com/key.asc", nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 			assertBodyEqualTo(t, response.Body, exampledata.ExamplePublicKey4)
 		})
 
 		t.Run("with + in email, request not urlencoded", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key.asc", nil)
+			response := callAPI(t, "GET", "/v1/email/test4+foo@example.com/key.asc", nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 
 		t.Run("with + in email, request urlencoded", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key.asc", nil)
+			response := callAPI(t, "GET", "/v1/email/test4%2Bfoo%40example.com/key.asc", nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 		})
 	})
@@ -142,7 +142,8 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 
 	t.Run("JSON endpoint", func(t *testing.T) {
 		t.Run("with no matching fingerprint", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex(), nil)
+			response := callAPI(t,
+				"GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex(), nil, nil)
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
 			assertHasJSONErrorDetail(t, response.Body,
@@ -151,7 +152,8 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 		})
 
 		t.Run("with a matching fingerprint", func(t *testing.T) {
-			response := callAPI(t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex(), nil)
+			response := callAPI(t,
+				"GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex(), nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 
 			responseData := v1structs.GetPublicKeyResponse{}
@@ -162,8 +164,8 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 
 	t.Run("ascii-armored endpoint", func(t *testing.T) {
 		t.Run("with no matching fingerprint", func(t *testing.T) {
-			response := callAPI(
-				t, "GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex()+".asc", nil,
+			response := callAPI(t,
+				"GET", "/v1/key/"+exampledata.ExampleFingerprint3.Hex()+".asc", nil, nil,
 			)
 
 			assertStatusCode(t, http.StatusNotFound, response.Code)
@@ -173,8 +175,8 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 		})
 
 		t.Run("with a matching fingerprint", func(t *testing.T) {
-			response := callAPI(
-				t, "GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex()+".asc", nil,
+			response := callAPI(t,
+				"GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex()+".asc", nil, nil,
 			)
 			assertStatusCode(t, http.StatusOK, response.Code)
 
@@ -286,7 +288,7 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 				validSha256),
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/keys", requestData, nil)
+		response := callAPI(t, "POST", "/v1/keys", requestData, nil)
 		fmt.Print(response.Body)
 		assertStatusCode(t, http.StatusOK, response.Code)
 
@@ -339,7 +341,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
+		response := callAPI(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusCreated, response.Code)
 	})
 
@@ -351,7 +353,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
+		response := callAPI(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `recipientFingerprint`: missing prefix `OPENPGP4FPR:`")
@@ -363,7 +365,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
+		response := callAPI(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `recipientFingerprint`: missing prefix `OPENPGP4FPR:`")
@@ -375,7 +377,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
+		response := callAPI(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body, "no key found for fingerprint")
 	})
@@ -386,7 +388,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: "",
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
+		response := callAPI(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: empty string")
@@ -398,7 +400,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: "bad ASCII armor",
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
+		response := callAPI(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: error decoding ASCII armor: EOF")
@@ -419,7 +421,7 @@ func TestSendSecretHandler(t *testing.T) {
 			ArmoredEncryptedSecret: validEncryptedArmoredSecret,
 		}
 
-		callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
+		callAPI(t, "POST", "/v1/secrets", requestData, nil)
 		// TODO: would be nice one day to test this.
 		// assertStatusCode(t, http.StatusBadRequest, response.Code)
 		// assertHasJsonErrorDetail(t, response.Body,
@@ -441,7 +443,7 @@ func TestSendSecretHandler(t *testing.T) {
 		requestData.ArmoredEncryptedSecret, err = encryptStringToArmor(string(runes), key)
 		assert.NoError(t, err)
 
-		response := callAPIWithJSON(t, "POST", "/v1/secrets", requestData, nil)
+		response := callAPI(t, "POST", "/v1/secrets", requestData, nil)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"invalid `armoredEncryptedSecret`: secrets currently have a "+
@@ -686,38 +688,12 @@ func TestDeleteSecretHandler(t *testing.T) {
 	teardown()
 }
 
-func callAPI(t *testing.T, method string, path string, authFingerprint *fingerprint.Fingerprint,
-) *httptest.ResponseRecorder {
-
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	t.Helper()
-
-	req, err := http.NewRequest(method, path, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if authFingerprint != nil {
-		req.Header.Set("Authorization", fmt.Sprintf("tmpfingerprint: %s", authFingerprint.Uri()))
-	}
-
-	recorder := httptest.NewRecorder() // create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	subrouter.ServeHTTP(recorder, req)
-
-	return recorder
-}
-
-func callAPIWithJSON(t *testing.T, method string, path string,
+func callAPI(t *testing.T, method string, path string,
 	requestData interface{}, authFingerprint *fingerprint.Fingerprint) *httptest.ResponseRecorder {
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	t.Helper()
-
-	if requestData == nil {
-		t.Fatalf("you must pass in requestData")
-	}
 
 	body := new(bytes.Buffer)
 
@@ -782,7 +758,7 @@ func testEndpointRejectsUnauthenticated(t *testing.T, method string, urlPath str
 
 	t.Run("request doesn't contain signer fingerprint in auth header", func(t *testing.T) {
 
-		response := callAPIWithJSON(
+		response := callAPI(
 			t, method, urlPath, requestData, nil) // nil -> unauthenticated
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t,

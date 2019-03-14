@@ -93,7 +93,7 @@ is_admin = false
 			ArmoredDetachedSignature: goodSignature,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &signerFingerprint)
+		response := callAPI(t, "POST", "/v1/teams", requestData, &signerFingerprint)
 
 		t.Run("returns HTTP 201", func(t *testing.T) {
 			assertStatusCode(t, http.StatusCreated, response.Code)
@@ -120,7 +120,7 @@ is_admin = false
 			ArmoredDetachedSignature: goodSignature,
 		}
 
-		response := callAPIWithJSON(
+		response := callAPI(
 			t, "POST", "/v1/teams", requestData, nil) // nil -> unauthenticated
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t,
@@ -136,7 +136,7 @@ is_admin = false
 				ArmoredDetachedSignature: goodSignature,
 			}
 
-			response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &signerFingerprint)
+			response := callAPI(t, "POST", "/v1/teams", requestData, &signerFingerprint)
 			assertStatusCode(t, http.StatusBadRequest, response.Code)
 			assertHasJSONErrorDetail(t, response.Body, "missing teamRoster")
 		})
@@ -146,7 +146,7 @@ is_admin = false
 				TeamRoster: goodRoster,
 			}
 
-			response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &signerFingerprint)
+			response := callAPI(t, "POST", "/v1/teams", requestData, &signerFingerprint)
 			assertStatusCode(t, http.StatusBadRequest, response.Code)
 			assertHasJSONErrorDetail(t, response.Body, "missing armoredDetachedSignature")
 		})
@@ -166,7 +166,7 @@ is_admin = false
 			ArmoredDetachedSignature: goodSignature,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &mismatchedFingerprint)
+		response := callAPI(t, "POST", "/v1/teams", requestData, &mismatchedFingerprint)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"signature verification failed")
@@ -183,7 +183,7 @@ is_admin = false
 
 		requestData := makeSignedRequest(t, goodRoster, keyNotInAPI)
 
-		response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &fingerprintNotInAPI)
+		response := callAPI(t, "POST", "/v1/teams", requestData, &fingerprintNotInAPI)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"public key that signed the roster has not been uploaded")
@@ -197,7 +197,7 @@ is_admin = false
 			ArmoredDetachedSignature: goodSignature,
 		}
 
-		response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &signerFingerprint)
+		response := callAPI(t, "POST", "/v1/teams", requestData, &signerFingerprint)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body, "signature verification failed")
 	})
@@ -312,7 +312,7 @@ is_admin = true
 
 				requestData := makeSignedRequest(t, test.roster, unlockedKey)
 
-				response := callAPIWithJSON(
+				response := callAPI(
 					t, "POST", "/v1/teams", requestData, &signerFingerprint)
 				assertStatusCode(t, http.StatusBadRequest, response.Code)
 				assertHasJSONErrorDetail(t, response.Body, test.expectedErrorDetail)
@@ -352,11 +352,11 @@ is_admin = true
 				is_admin = false`
 
 			requestData1 := makeSignedRequest(t, roster1, unlockedKey)
-			response1 := callAPIWithJSON(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
+			response1 := callAPI(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
 			assertStatusCode(t, http.StatusCreated, response1.Code)
 
 			requestData2 := makeSignedRequest(t, roster2, unlockedKey)
-			response2 := callAPIWithJSON(t, "POST", "/v1/teams", requestData2, &signerFingerprint)
+			response2 := callAPI(t, "POST", "/v1/teams", requestData2, &signerFingerprint)
 			assertStatusCode(t, http.StatusOK, response2.Code)
 
 			retrievedTeam, err := loadExistingTeam(
@@ -412,11 +412,11 @@ is_admin = true
 				is_admin = true`
 
 			requestData1 := makeSignedRequest(t, roster1, unlockedKey)
-			response1 := callAPIWithJSON(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
+			response1 := callAPI(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
 			assertStatusCode(t, http.StatusCreated, response1.Code)
 
 			requestData2 := makeSignedRequest(t, roster2, unlockedKey)
-			response2 := callAPIWithJSON(t, "POST", "/v1/teams", requestData2, &signerFingerprint)
+			response2 := callAPI(t, "POST", "/v1/teams", requestData2, &signerFingerprint)
 			assertStatusCode(t, http.StatusBadRequest, response2.Code)
 			assertHasJSONErrorDetail(t,
 				response2.Body, "signing key isn't listed in roster as a team admin",
@@ -453,7 +453,7 @@ is_admin = true
 				is_admin = true # <--- not allowed!`
 
 			requestData1 := makeSignedRequest(t, roster1, unlockedKey)
-			response1 := callAPIWithJSON(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
+			response1 := callAPI(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
 			assertStatusCode(t, http.StatusCreated, response1.Code)
 
 			// now set up update request
@@ -475,7 +475,7 @@ is_admin = true
 			}()
 
 			requestData2 := makeSignedRequest(t, roster2, unauthorizedKey)
-			response2 := callAPIWithJSON(
+			response2 := callAPI(
 				t, "POST", "/v1/teams", requestData2, &exampledata.ExampleFingerprint3)
 			assertStatusCode(t, http.StatusForbidden, response2.Code)
 			assertHasJSONErrorDetail(t,
@@ -523,7 +523,8 @@ func TestGetTeamHandler(t *testing.T) {
 	defer teardown()
 
 	t.Run("for existing team", func(t *testing.T) {
-		mockResponse := callAPI(t, "GET", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8", nil)
+		mockResponse := callAPI(t,
+			"GET", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8", nil, nil)
 
 		t.Run("status code 200", func(t *testing.T) {
 			assertStatusCode(t, http.StatusOK, mockResponse.Code)
@@ -545,7 +546,8 @@ func TestGetTeamHandler(t *testing.T) {
 
 	t.Run("for non existent team", func(t *testing.T) {
 		// this UUID doesn't exist
-		mockResponse := callAPI(t, "GET", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810", nil)
+		mockResponse := callAPI(t,
+			"GET", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810", nil, nil)
 
 		t.Run("status code 404", func(t *testing.T) {
 			assertStatusCode(t, http.StatusNotFound, mockResponse.Code)
@@ -564,7 +566,7 @@ func TestGetTeamHandler(t *testing.T) {
 			datastore.DeleteTeam(nil, badRosterTeam.UUID)
 		}()
 
-		mockResponse := callAPI(t, "GET", "/v1/team/"+badRosterTeam.UUID.String(), nil)
+		mockResponse := callAPI(t, "GET", "/v1/team/"+badRosterTeam.UUID.String(), nil, nil)
 
 		t.Run("status code 500", func(t *testing.T) {
 			assertStatusCode(t, http.StatusInternalServerError, mockResponse.Code)
@@ -615,7 +617,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 			TeamEmail: "test4@example.com",
 		}
 
-		mockResponse := callAPIWithJSON(t,
+		mockResponse := callAPI(t,
 			"POST", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8/requests-to-join",
 			requestData, &exampledata.ExampleFingerprint4)
 
@@ -635,7 +637,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 	t.Run("for non existent team", func(t *testing.T) {
 		mockResponse := callAPI(t,
 			// this team UUID doesn't exist
-			"POST", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810/requests-to-join", nil)
+			"POST", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810/requests-to-join", nil, nil)
 
 		t.Run("status code 400 bad request", func(t *testing.T) {
 			assertStatusCode(t, http.StatusBadRequest, mockResponse.Code)
@@ -647,7 +649,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 			TeamEmail: "",
 		}
 
-		mockResponse := callAPIWithJSON(t,
+		mockResponse := callAPI(t,
 			"POST", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810/requests-to-join",
 			requestData, &exampledata.ExampleFingerprint4)
 
@@ -682,7 +684,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 				nil, "conflicting-example@example.com", exampledata.ExampleFingerprint4,
 			))
 
-		firstResponse := callAPIWithJSON(t,
+		firstResponse := callAPI(t,
 			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
 			requestData, &exampledata.ExampleFingerprint4)
 
@@ -696,7 +698,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 				nil, "conflicting-example@example.com", exampledata.ExampleFingerprint2,
 			))
 
-		secondResponse := callAPIWithJSON(t,
+		secondResponse := callAPI(t,
 			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
 			// same {team, email}, *different* fingerprint
 			requestData, &exampledata.ExampleFingerprint2,
@@ -732,7 +734,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 			TeamEmail: "test4@example.com",
 		}
 
-		firstResponse := callAPIWithJSON(t,
+		firstResponse := callAPI(t,
 			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
 			requestData, &exampledata.ExampleFingerprint4)
 
@@ -740,7 +742,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 			t.Fatalf("failed to create team join request, got http %d", firstResponse.Code)
 		}
 
-		secondResponse := callAPIWithJSON(t,
+		secondResponse := callAPI(t,
 			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
 			// same fingerprint as previous request: should succeed
 			requestData, &exampledata.ExampleFingerprint4)
@@ -798,7 +800,8 @@ func TestGetTeamRoster(t *testing.T) {
 		responseData := v1structs.GetTeamRosterResponse{} // placeholder
 
 		response := callAPI(t,
-			"GET", fmt.Sprintf("/v1/team/%s/roster", team.UUID), &exampledata.ExampleFingerprint4,
+			"GET", fmt.Sprintf("/v1/team/%s/roster", team.UUID),
+			nil, &exampledata.ExampleFingerprint4,
 		)
 
 		t.Run("returns HTTP 200 OK", func(t *testing.T) {
@@ -844,7 +847,7 @@ func TestGetTeamRoster(t *testing.T) {
 	t.Run("for non existent team", func(t *testing.T) {
 		response := callAPI(t,
 			"GET", "/v1/team/8d79a1a6-3b67-11e9-b2dc-9f62d9775810/roster", // UUID does not exist
-			&exampledata.ExampleFingerprint4,
+			nil, &exampledata.ExampleFingerprint4,
 		)
 
 		t.Run("status code 404", func(t *testing.T) {
@@ -854,7 +857,8 @@ func TestGetTeamRoster(t *testing.T) {
 
 	t.Run("request key is not in the roster returns 403 forbidden", func(t *testing.T) {
 		response := callAPI(t,
-			"GET", fmt.Sprintf("/v1/team/%s/roster", team.UUID), &exampledata.ExampleFingerprint2,
+			"GET", fmt.Sprintf("/v1/team/%s/roster", team.UUID),
+			nil, &exampledata.ExampleFingerprint2,
 		)
 
 		assertStatusCode(t, http.StatusForbidden, response.Code)
