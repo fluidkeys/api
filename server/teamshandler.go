@@ -58,29 +58,50 @@ func createTeamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	team, err := team.Parse(strings.NewReader(requestData.TeamRoster))
+	newTeam, err := team.Parse(strings.NewReader(requestData.TeamRoster))
 	if err != nil {
 		writeJsonError(w, err, http.StatusBadRequest)
 		return
 	}
 
-	if err := team.Validate(); err != nil {
+	if err := newTeam.Validate(); err != nil {
 		writeJsonError(w, err, http.StatusBadRequest)
 		return
 	}
 
-	person, err := team.GetPersonForFingerprint(apparentSignerKey.Fingerprint())
-	if err != nil || !person.IsAdmin {
+	meInNewTeam, err := newTeam.GetPersonForFingerprint(apparentSignerKey.Fingerprint())
+	if err != nil || !meInNewTeam.IsAdmin {
 		writeJsonError(w,
 			fmt.Errorf("signing key isn't listed in roster as a team admin"),
 			http.StatusBadRequest)
 		return
 	}
 
+	var existingTeam *team.Team
+
 	err = datastore.RunInTransaction(func(txn *sql.Tx) error {
+		existingTeam, err = loadExistingTeam(txn, newTeam.UUID)
+		switch err {
+
+		case nil:
+			// Team already exists: this is an *update*. In this case we need to check that the
+			// person signing the roster was listed as an admin in the *existing* team stored in
+			// the database.
+
+			meInExistingTeam, err := existingTeam.GetPersonForFingerprint(apparentSignerKey.Fingerprint())
+			if err != nil || !meInExistingTeam.IsAdmin {
+				return errNotAnAdminInExistingTeam
+			}
+
+		default: // some other error
+			return err
+
+		case datastore.ErrNotFound: // new team: crack on
+			break
+		}
 
 		if verified, err := datastore.QueryEmailVerifiedForFingerprint(
-			txn, person.Email, apparentSignerKey.Fingerprint()); err != nil {
+			txn, meInNewTeam.Email, apparentSignerKey.Fingerprint()); err != nil {
 
 			return fmt.Errorf("error querying email verification: %v", err)
 		} else if !verified {
@@ -88,14 +109,8 @@ func createTeamHandler(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("signing key's email listed in roster is unverified")
 		}
 
-		if exists, err := datastore.TeamExists(txn, team.UUID); err != nil {
-			return fmt.Errorf("error querying for team: %v", err)
-		} else if exists {
-			return fmt.Errorf("team with UUID %s already exists", team.UUID)
-		}
-
 		team := datastore.Team{
-			UUID:            team.UUID,
+			UUID:            newTeam.UUID,
 			Roster:          requestData.TeamRoster,
 			RosterSignature: requestData.ArmoredDetachedSignature,
 			CreatedAt:       time.Now(),
@@ -108,13 +123,27 @@ func createTeamHandler(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	if err != nil {
+	switch err {
+	case errNotAnAdminInExistingTeam:
+		writeJsonError(w,
+			fmt.Errorf("can't update team: the key signing the request is not a team admin"),
+			http.StatusForbidden,
+		)
+		return
+
+	default:
 		writeJsonError(w, err, http.StatusBadRequest)
 		return
+
+	case nil:
+		if existingTeam == nil {
+			w.WriteHeader(http.StatusCreated) // no existing team: return *created*
+		} else {
+			w.WriteHeader(http.StatusOK) // existing team: return OK (for *updated*)
+		}
+		w.Write(nil)
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	w.Write(nil)
 }
 
 // loadExistingTeam loads a team from the database, parses its stored roster and returns a team.Team
@@ -248,3 +277,7 @@ func createRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 
 func deleteRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 }
+
+var (
+	errNotAnAdminInExistingTeam = fmt.Errorf("signing key is not an admin of the team")
+)

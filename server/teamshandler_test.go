@@ -12,7 +12,9 @@ import (
 	"github.com/fluidkeys/crypto/openpgp"
 	"github.com/fluidkeys/fluidkeys/assert"
 	"github.com/fluidkeys/fluidkeys/exampledata"
+	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
+	"github.com/fluidkeys/fluidkeys/team"
 	"github.com/gofrs/uuid"
 )
 
@@ -178,13 +180,7 @@ is_admin = false
 		fingerprintNotInAPI := keyNotInAPI.Fingerprint()
 		assert.NoError(t, err)
 
-		signature, err := makeArmoredDetachedSignature([]byte(goodRoster), keyNotInAPI)
-		assert.NoError(t, err)
-
-		requestData := v1structs.UpsertTeamRequest{
-			TeamRoster:               goodRoster,
-			ArmoredDetachedSignature: signature,
-		}
+		requestData := makeSignedRequest(t, goodRoster, keyNotInAPI)
 
 		response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &fingerprintNotInAPI)
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
@@ -313,13 +309,7 @@ is_admin = true
 		for _, test := range invalidRosterTests {
 			t.Run(test.testName, func(t *testing.T) {
 
-				signature, err := makeArmoredDetachedSignature([]byte(test.roster), unlockedKey)
-				assert.NoError(t, err)
-
-				requestData := v1structs.UpsertTeamRequest{
-					TeamRoster:               test.roster,
-					ArmoredDetachedSignature: signature,
-				}
+				requestData := makeSignedRequest(t, test.roster, unlockedKey)
 
 				response := callAPIWithJSON(
 					t, "POST", "/v1/teams", requestData, &signerFingerprint)
@@ -330,36 +320,184 @@ is_admin = true
 
 	})
 
-	t.Run("reject update if team uuid already exists", func(t *testing.T) {
-		duplicatedRoster := `
-uuid = "` + duplicateUUID.String() + `"
+	t.Run("update existing team", func(t *testing.T) {
+		t.Run("with valid update request ", func(t *testing.T) {
+			roster1 := `
+				uuid = "74522e58-45be-11e9-b653-ab65bb61ab3b"
+				name = "BEFORE"
 
-[[person]]
-email = "test4@example.com"
-fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
-is_admin = true
+				[[person]]
+				email = "test4@example.com"
+				fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+				is_admin = true
 
-[[person]]
-email = "b@example.com"
-fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
-is_admin = false
-`
+				[[person]]
+				email = "another@example.com"
+				fingerprint = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+				is_admin = false`
 
-		signature, err := makeArmoredDetachedSignature([]byte(duplicatedRoster), unlockedKey)
-		assert.NoError(t, err)
+			roster2 := `
+				uuid = "74522e58-45be-11e9-b653-ab65bb61ab3b"
+				name = "AFTER"
 
-		requestData := v1structs.UpsertTeamRequest{
-			TeamRoster:               duplicatedRoster,
-			ArmoredDetachedSignature: signature,
-		}
+				[[person]]
+				email = "test4@example.com"
+				fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+				is_admin = true
 
-		response := callAPIWithJSON(t, "POST", "/v1/teams", requestData, &signerFingerprint)
-		assertStatusCode(t, http.StatusCreated, response.Code)
+				[[person]]
+				email = "another@example.com"
+				fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"  # <-- different!
+				is_admin = false`
 
-		response = callAPIWithJSON(t, "POST", "/v1/teams", requestData, &signerFingerprint)
-		assertStatusCode(t, http.StatusBadRequest, response.Code)
-		assertHasJSONErrorDetail(t, response.Body, fmt.Sprintf("team with UUID %s already exists", duplicateUUID))
+			requestData1 := makeSignedRequest(t, roster1, unlockedKey)
+			response1 := callAPIWithJSON(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
+			assertStatusCode(t, http.StatusCreated, response1.Code)
+
+			requestData2 := makeSignedRequest(t, roster2, unlockedKey)
+			response2 := callAPIWithJSON(t, "POST", "/v1/teams", requestData2, &signerFingerprint)
+			assertStatusCode(t, http.StatusOK, response2.Code)
+
+			retrievedTeam, err := loadExistingTeam(
+				nil, uuid.Must(uuid.FromString("74522e58-45be-11e9-b653-ab65bb61ab3b")),
+			)
+			assert.NoError(t, err)
+
+			t.Run("team name was updated", func(t *testing.T) {
+				assert.Equal(t, "AFTER", retrievedTeam.Name)
+			})
+
+			t.Run("team members were updated", func(t *testing.T) {
+				expectedPeople := []team.Person{
+					{
+						Email: "test4@example.com",
+						Fingerprint: fpr.MustParse(
+							"BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"),
+						IsAdmin: true,
+					},
+					{
+						Email:       "another@example.com",
+						Fingerprint: fpr.MustParse("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"),
+						IsAdmin:     false,
+					},
+				}
+				assert.Equal(t, expectedPeople, retrievedTeam.People)
+			})
+		})
+
+		t.Run("signer cannot demote themselves as admin", func(t *testing.T) {
+			roster1 := `
+				uuid = "6aa9b9b8-463e-11e9-8a5f-7753b9c9218c"
+				name = "BEFORE"
+
+				[[person]]
+				email = "test4@example.com"
+				fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+				is_admin = true`
+
+			roster2 := `
+				uuid = "6aa9b9b8-463e-11e9-8a5f-7753b9c9218c"
+				name = "AFTER"
+
+				[[person]]
+				email = "test4@example.com"
+				fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+				is_admin = false  # <-- demoted
+
+				[[person]]
+				# another person to ensure roster2 is still valid
+				email = "another@example.com"
+				fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+				is_admin = true`
+
+			requestData1 := makeSignedRequest(t, roster1, unlockedKey)
+			response1 := callAPIWithJSON(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
+			assertStatusCode(t, http.StatusCreated, response1.Code)
+
+			requestData2 := makeSignedRequest(t, roster2, unlockedKey)
+			response2 := callAPIWithJSON(t, "POST", "/v1/teams", requestData2, &signerFingerprint)
+			assertStatusCode(t, http.StatusBadRequest, response2.Code)
+			assertHasJSONErrorDetail(t,
+				response2.Body, "signing key isn't listed in roster as a team admin",
+			)
+		})
+
+		t.Run("reject if signer is not an admin in the existing team", func(t *testing.T) {
+			roster1 := `
+				uuid = "98f2c6ca-463e-11e9-8bac-43602efc043e"
+				name = "BEFORE"
+
+				[[person]]
+				email = "test4@example.com"
+				fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+				is_admin = true
+
+				[[person]]
+				email = "test3@example.com"
+				fingerprint = "7C18 DE4D E478 1356 8B24  3AC8 719B D63E F03B DC20"
+				is_admin = false`
+
+			roster2 := `
+				uuid = "98f2c6ca-463e-11e9-8bac-43602efc043e"
+				name = "AFTER"
+
+				[[person]]
+				email = "test4@example.com"
+				fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+				is_admin = true
+
+				[[person]]
+				email = "test3@example.com"
+				fingerprint = "7C18 DE4D E478 1356 8B24  3AC8 719B D63E F03B DC20"
+				is_admin = true # <--- not allowed!`
+
+			requestData1 := makeSignedRequest(t, roster1, unlockedKey)
+			response1 := callAPIWithJSON(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
+			assertStatusCode(t, http.StatusCreated, response1.Code)
+
+			// now set up update request
+			unauthorizedKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(
+				exampledata.ExamplePrivateKey3, "test3")
+			assert.NoError(t, err)
+
+			assert.NoError(t,
+				datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey3))
+
+			assert.NoError(t,
+				datastore.LinkEmailToFingerprint(
+					nil, "test3@example.com", exampledata.ExampleFingerprint3,
+				),
+			)
+
+			defer func() {
+				datastore.DeletePublicKey(unauthorizedKey.Fingerprint())
+			}()
+
+			requestData2 := makeSignedRequest(t, roster2, unauthorizedKey)
+			response2 := callAPIWithJSON(
+				t, "POST", "/v1/teams", requestData2, &exampledata.ExampleFingerprint3)
+			assertStatusCode(t, http.StatusForbidden, response2.Code)
+			assertHasJSONErrorDetail(t,
+				response2.Body,
+				"can't update team: the key signing the request is not a team admin",
+			)
+		})
 	})
+
+}
+
+func makeSignedRequest(t *testing.T, roster string, privateKey *pgpkey.PgpKey) v1structs.UpsertTeamRequest {
+	t.Helper()
+
+	sig, err := makeArmoredDetachedSignature([]byte(roster), privateKey)
+	assert.NoError(t, err)
+
+	requestData := v1structs.UpsertTeamRequest{
+		TeamRoster:               roster,
+		ArmoredDetachedSignature: sig,
+	}
+
+	return requestData
 }
 
 func TestGetTeamHandler(t *testing.T) {
