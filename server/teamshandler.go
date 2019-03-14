@@ -15,7 +15,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func createTeamHandler(w http.ResponseWriter, r *http.Request) {
+func upsertTeamHandler(w http.ResponseWriter, r *http.Request) {
 	// note that the roster *could* be re-uploaded by any team member: we don't authenticate
 	// the request.
 	// it will only be accepted if it's correctly signed
