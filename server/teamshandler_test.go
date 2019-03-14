@@ -839,10 +839,7 @@ func TestGetTeamRoster(t *testing.T) {
 
 	})
 
-	testEndpointRejectsUnauthenticated(t,
-		"GET",
-		fmt.Sprintf("/v1/team/%s/roster", team.UUID),
-		struct{}{}) // TODO: make this test helper support requestData of `nil`
+	testEndpointRejectsUnauthenticated(t, "GET", fmt.Sprintf("/v1/team/%s/roster", team.UUID), nil)
 
 	t.Run("for non existent team", func(t *testing.T) {
 		response := callAPI(t,

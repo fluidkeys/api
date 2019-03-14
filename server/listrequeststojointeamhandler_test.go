@@ -112,7 +112,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 	})
 
 	testEndpointRejectsUnauthenticated(t,
-		"GET", fmt.Sprintf("/v1/team/%s/requests-to-join", teamUUID), struct{}{})
+		"GET", fmt.Sprintf("/v1/team/%s/requests-to-join", teamUUID), nil)
 
 	t.Run("mismatch between signer fingerprint and long keyID in signature", func(t *testing.T) {
 		mismatchedFingerprint := exampledata.ExampleFingerprint2
