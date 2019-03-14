@@ -60,6 +60,11 @@ func init() {
 	).Methods("GET")
 
 	subrouter.HandleFunc(
+		"/team/{teamUUID}/roster",
+		getTeamRosterHandler,
+	).Methods("GET")
+
+	subrouter.HandleFunc(
 		"/team/{teamUUID}/requests-to-join/{requestUUID}",
 		deleteRequestToJoinTeamHandler,
 	).Methods("DELETE")
