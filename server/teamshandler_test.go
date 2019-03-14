@@ -244,6 +244,20 @@ fingerprint = "AAAA AAAA AAAA AAAA AAAA  AAAA AAAA AAAA AAAA AAAA"
 is_admin = true
 `
 
+		signingKeyNotAnAdmin := `
+uuid = "344672d2-35e8-11e9-ade3-93c56fb48f08"
+
+[[person]]
+email = "test4@example.com"
+fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"  # <-- signing key
+is_admin = false
+
+[[person]]
+email = "the-admin@example.com"
+fingerprint = "AAAA AAAA AAAA AAAA AAAA  AAAA AAAA AAAA AAAA AAAA"
+is_admin = true
+`
+
 		unverifiedEmailInRoster := `
 uuid = "113ab4ba-35e8-11e9-8aa6-f721c118df12"
 
@@ -280,9 +294,14 @@ is_admin = true
 					"35F4  A092 F73D 2F05 33D7 F9D6",
 			},
 			{
-				testName:            "signing key's fingerprint isn't listed in roster",
+				testName:            "signing key's fingerprint missing from roster",
 				roster:              signingKeyNotInRoster,
-				expectedErrorDetail: "signing key's fingerprint isn't listed in roster",
+				expectedErrorDetail: "signing key isn't listed in roster as a team admin",
+			},
+			{
+				testName:            "signing key listed in roster but not an admin",
+				roster:              signingKeyNotAnAdmin,
+				expectedErrorDetail: "signing key isn't listed in roster as a team admin",
 			},
 			{
 				testName:            "signing key's linked email in roster is unverified",

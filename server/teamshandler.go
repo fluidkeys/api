@@ -70,9 +70,10 @@ func createTeamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	person, err := team.GetPersonForFingerprint(apparentSignerKey.Fingerprint())
-	if err != nil {
+	if err != nil || !person.IsAdmin {
 		writeJsonError(w,
-			fmt.Errorf("signing key's fingerprint isn't listed in roster"), http.StatusBadRequest)
+			fmt.Errorf("signing key isn't listed in roster as a team admin"),
+			http.StatusBadRequest)
 		return
 	}
 
