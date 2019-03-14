@@ -52,7 +52,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 		)
 
 		assert.NoError(t,
-			datastore.CreateTeam(nil, goodTeam),
+			datastore.UpsertTeam(nil, goodTeam),
 		)
 	}
 

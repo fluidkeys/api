@@ -51,11 +51,19 @@ func TeamExists(txn *sql.Tx, teamUUID uuid.UUID) (bool, error) {
 	}
 }
 
-// CreateTeam creates a team in the database.
-// If a team already exists with team.UUID it returns an error
-func CreateTeam(txn *sql.Tx, team Team) error {
+// UpsertTeam creates a team in the database.
+// If a team already exists with team.UUID it updates the team.
+func UpsertTeam(txn *sql.Tx, team Team) error {
 	query := `INSERT INTO teams (uuid, created_at, roster, roster_signature)
-	          VALUES ($1, $2, $3, $4)`
+	          VALUES ($1, $2, $3, $4)
+              ON CONFLICT (uuid) DO UPDATE
+              SET roster           = EXCLUDED.roster,
+                  roster_signature = EXCLUDED.roster_signature`
+
+	// query := `INSERT INTO teams (uuid, created_at, roster, roster_signature)
+	//           VALUES ($1, $2)
+	// 	  ON CONFLICT (uid) DO UPDATE
+	// 	      SET armored_public_key=EXCLUDED.armored_public_key`
 
 	_, err := transactionOrDatabase(txn).Exec(
 		query,

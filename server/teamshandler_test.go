@@ -353,7 +353,7 @@ func TestGetTeamHandler(t *testing.T) {
 	}
 
 	setup := func() {
-		assert.NoError(t, datastore.CreateTeam(nil, exampleTeam))
+		assert.NoError(t, datastore.UpsertTeam(nil, exampleTeam))
 	}
 
 	teardown := func() {
@@ -401,7 +401,7 @@ func TestGetTeamHandler(t *testing.T) {
 			CreatedAt: now,
 		}
 
-		assert.NoError(t, datastore.CreateTeam(nil, badRosterTeam))
+		assert.NoError(t, datastore.UpsertTeam(nil, badRosterTeam))
 		defer func() {
 			datastore.DeleteTeam(nil, badRosterTeam.UUID)
 		}()
@@ -430,7 +430,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 	}
 
 	setup := func() {
-		assert.NoError(t, datastore.CreateTeam(nil, exampleTeam))
+		assert.NoError(t, datastore.UpsertTeam(nil, exampleTeam))
 
 		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
 		assert.NoError(t,
@@ -507,7 +507,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 			RosterSignature: "",
 			CreatedAt:       now,
 		}
-		assert.NoError(t, datastore.CreateTeam(nil, team))
+		assert.NoError(t, datastore.UpsertTeam(nil, team))
 		defer func() {
 			_, err := datastore.DeleteTeam(nil, team.UUID)
 			assert.NoError(t, err)
@@ -562,7 +562,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 			RosterSignature: "",
 			CreatedAt:       now,
 		}
-		assert.NoError(t, datastore.CreateTeam(nil, team))
+		assert.NoError(t, datastore.UpsertTeam(nil, team))
 		defer func() {
 			_, err := datastore.DeleteTeam(nil, team.UUID)
 			assert.NoError(t, err)

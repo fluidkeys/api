@@ -9,7 +9,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func TestCreateTeam(t *testing.T) {
+func TestUpsertTeam(t *testing.T) {
 	team := Team{
 		UUID:            uuid.Must(uuid.NewV4()),
 		Roster:          "fake-roster",
@@ -17,8 +17,49 @@ func TestCreateTeam(t *testing.T) {
 		CreatedAt:       now,
 	}
 
-	err := CreateTeam(nil, team)
-	assert.NoError(t, err)
+	t.Run("creates a team with no error", func(t *testing.T) {
+
+		err := UpsertTeam(nil, team)
+		assert.NoError(t, err)
+	})
+
+	t.Run("team roster can be updated", func(t *testing.T) {
+		teamUUID := uuid.Must(uuid.NewV4())
+		originalTeam := Team{
+			UUID:            teamUUID,
+			Roster:          "original-roster",
+			RosterSignature: "original-signature",
+			CreatedAt:       now,
+		}
+
+		updatedTeam := Team{
+			UUID:            teamUUID,
+			Roster:          "updated-roster",
+			RosterSignature: "updated-signature",
+			CreatedAt:       later, // CreatedAt should *not* change on update
+		}
+		err := UpsertTeam(nil, originalTeam)
+		assert.NoError(t, err)
+
+		err = UpsertTeam(nil, updatedTeam)
+		assert.NoError(t, err)
+
+		retrievedTeam, err := GetTeam(nil, teamUUID)
+		assert.NoError(t, err)
+
+		t.Run("roster has been updated", func(t *testing.T) {
+			assert.Equal(t, updatedTeam.Roster, retrievedTeam.Roster)
+		})
+
+		t.Run("roster signature has been updated", func(t *testing.T) {
+			assert.Equal(t, updatedTeam.RosterSignature, retrievedTeam.RosterSignature)
+		})
+
+		t.Run("CreatedAt remains unchanged", func(t *testing.T) {
+			assert.Equal(t, true, originalTeam.CreatedAt.Equal(retrievedTeam.CreatedAt))
+		})
+
+	})
 }
 
 func TestGetTeam(t *testing.T) {
@@ -265,7 +306,7 @@ func createTestTeam(t *testing.T) {
 		CreatedAt:       now,
 	}
 
-	err := CreateTeam(nil, team)
+	err := UpsertTeam(nil, team)
 	assert.NoError(t, err)
 }
 
@@ -277,5 +318,6 @@ func deleteTestTeam(t *testing.T) {
 
 var (
 	now      = time.Date(2018, 6, 15, 16, 30, 0, 0, time.UTC)
+	later    = now.Add(time.Duration(1) + time.Hour)
 	testUUID = uuid.Must(uuid.NewV4())
 )
