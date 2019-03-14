@@ -81,6 +81,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 			t,
 			"GET",
 			fmt.Sprintf("/v1/team/%s/requests-to-join", teamUUID),
+			nil,
 			&exampledata.ExampleFingerprint4,
 		)
 
@@ -111,7 +112,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 	})
 
 	testEndpointRejectsUnauthenticated(t,
-		"GET", fmt.Sprintf("/v1/team/%s/requests-to-join", teamUUID), struct{}{})
+		"GET", fmt.Sprintf("/v1/team/%s/requests-to-join", teamUUID), nil)
 
 	t.Run("mismatch between signer fingerprint and long keyID in signature", func(t *testing.T) {
 		mismatchedFingerprint := exampledata.ExampleFingerprint2
@@ -126,6 +127,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 			t,
 			"GET",
 			fmt.Sprintf("/v1/team/%s/requests-to-join", teamUUID),
+			nil,
 			&mismatchedFingerprint,
 		)
 
@@ -144,6 +146,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 			t,
 			"GET",
 			"/v1/team/foo/requests-to-join",
+			nil,
 			&exampledata.ExampleFingerprint4,
 		)
 
@@ -162,6 +165,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 			t,
 			"GET",
 			fmt.Sprintf("/v1/team/%s/requests-to-join", uuid.Must(uuid.NewV4())),
+			nil,
 			&exampledata.ExampleFingerprint4,
 		)
 
