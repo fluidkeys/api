@@ -41,7 +41,7 @@ func init() {
 
 	subrouter.HandleFunc(
 		"/teams",
-		createTeamHandler,
+		upsertTeamHandler,
 	).Methods("POST")
 
 	subrouter.HandleFunc(
