@@ -89,6 +89,7 @@ var migrateDatabaseStatements = []string{
 
                 UNIQUE (team_uuid, email)
     )`,
+	`ALTER TABLE teams ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP`, // allow NULL
 }
 
 // allTables is used by the test helper DropAllTheTables to keep track of what tables to
