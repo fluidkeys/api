@@ -101,7 +101,7 @@ func createTeamHandler(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:       time.Now(),
 		}
 
-		if err := datastore.CreateTeam(txn, team); err != nil {
+		if err := datastore.UpsertTeam(txn, team); err != nil {
 			return fmt.Errorf("error creating team: %v", err)
 		}
 
