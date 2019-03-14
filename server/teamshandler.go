@@ -116,6 +116,20 @@ func createTeamHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(nil)
 }
 
+// loadExistingTeam loads a team from the database, parses its stored roster and returns a team.Team
+func loadExistingTeam(txn *sql.Tx, teamUUID uuid.UUID) (*team.Team, error) {
+	dbTeam, err := datastore.GetTeam(nil, teamUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	team, err := team.Parse(strings.NewReader(dbTeam.Roster))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse team from roster stored in db: %v", err)
+	}
+	return team, nil
+}
+
 func getTeamHandler(w http.ResponseWriter, r *http.Request) {
 	teamUUID, err := uuid.FromString(mux.Vars(r)["teamUUID"])
 	if err != nil {
@@ -123,22 +137,12 @@ func getTeamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dbTeam, err := datastore.GetTeam(nil, teamUUID)
+	team, err := loadExistingTeam(nil, teamUUID)
 	if err == datastore.ErrNotFound {
 		writeJsonError(w, err, http.StatusNotFound)
 		return
-
 	} else if err != nil {
 		writeJsonError(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	// parse the roster to get the team name
-	team, err := team.Parse(strings.NewReader(dbTeam.Roster))
-	if err != nil {
-		writeJsonError(w,
-			fmt.Errorf("failed to parse name from team roster"),
-			http.StatusInternalServerError)
 		return
 	}
 

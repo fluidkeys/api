@@ -415,7 +415,9 @@ func TestGetTeamHandler(t *testing.T) {
 		t.Run("error detail explains roster problem", func(t *testing.T) {
 			assertHasJSONErrorDetail(t,
 				mockResponse.Body,
-				"failed to parse name from team roster")
+				"failed to parse team from roster stored in db: error in toml.DecodeReader: "+
+					"Near line 1 (last key parsed 'broken'): expected key separator '=', but "+
+					"got 'r' instead")
 		})
 	})
 }
