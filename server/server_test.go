@@ -87,6 +87,10 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 			response := callAPI(t, "GET", "/v1/email/test4@example.com/key", nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
 
+			t.Run("response has json content type", func(t *testing.T) {
+				assert.Equal(t, "application/json", response.Header().Get("content-type"))
+			})
+
 			responseData := v1structs.GetPublicKeyResponse{}
 			assertBodyDecodesInto(t, response.Body, &responseData)
 			assert.Equal(t, responseData.ArmoredPublicKey, exampledata.ExamplePublicKey4)
@@ -155,6 +159,9 @@ func TestGetPublicKeyByFingerprintHandler(t *testing.T) {
 			response := callAPI(t,
 				"GET", "/v1/key/"+exampledata.ExampleFingerprint4.Hex(), nil, nil)
 			assertStatusCode(t, http.StatusOK, response.Code)
+			t.Run("response has json content type", func(t *testing.T) {
+				assert.Equal(t, "application/json", response.Header().Get("content-type"))
+			})
 
 			responseData := v1structs.GetPublicKeyResponse{}
 			assertBodyDecodesInto(t, response.Body, &responseData)
@@ -291,6 +298,10 @@ func TestUpsertPublicKeyHandler(t *testing.T) {
 		response := callAPI(t, "POST", "/v1/keys", requestData, nil)
 		fmt.Print(response.Body)
 		assertStatusCode(t, http.StatusOK, response.Code)
+
+		t.Run("response has json content type", func(t *testing.T) {
+			assert.Equal(t, "application/json", response.Header().Get("content-type"))
+		})
 
 		responseData := v1structs.UpsertPublicKeyResponse{}
 		err = json.NewDecoder(response.Body).Decode(&responseData)
@@ -559,6 +570,10 @@ func TestListSecretsHandler(t *testing.T) {
 
 		t.Run("returns http 200", func(t *testing.T) {
 			assertStatusCode(t, http.StatusOK, response.Code)
+		})
+
+		t.Run("response has json content type", func(t *testing.T) {
+			assert.Equal(t, "application/json", response.Header().Get("content-type"))
 		})
 
 		t.Run("returns expected JSON", func(t *testing.T) {
