@@ -180,6 +180,27 @@ func GetRequestToJoinTeam(txn *sql.Tx, teamUUID uuid.UUID, email string) (
 	return &request, nil
 }
 
+// DeleteRequestToJoinTeam deletes the given request to join team (by UUID)
+func DeleteRequestToJoinTeam(txn *sql.Tx, requestUUID uuid.UUID) (found bool, err error) {
+	query := `DELETE FROM team_join_requests WHERE uuid=$1`
+
+	result, err := transactionOrDatabase(txn).Exec(query, requestUUID)
+	if err != nil {
+		return false, err
+	}
+
+	numRowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	if numRowsAffected < 1 {
+		return false, nil // not found (but no error)
+	}
+
+	return true, nil // found and deleted
+}
+
 // GetRequestsToJoinTeam returns a slice of RequestToJoinTeams.
 func GetRequestsToJoinTeam(txn *sql.Tx, teamUUID uuid.UUID) ([]RequestToJoinTeam, error) {
 	query := `SELECT uuid, created_at, email, fingerprint
