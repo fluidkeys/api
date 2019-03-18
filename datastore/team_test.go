@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fluidkeys/fluidkeys/assert"
+	"github.com/fluidkeys/fluidkeys/exampledata"
 	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/gofrs/uuid"
 )
@@ -169,6 +170,24 @@ func TestGetRequestToJoinTeam(t *testing.T) {
 	})
 }
 
+func TestDeleteRequestToJoinTeam(t *testing.T) {
+	createTestTeam(t)
+	requestUUID := createTestRequestToJoinTeam(t)
+
+	t.Run("when request exists", func(t *testing.T) {
+		found, err := DeleteRequestToJoinTeam(nil, requestUUID)
+		assert.NoError(t, err)
+		assert.Equal(t, true, found)
+	})
+
+	t.Run("when request doesn't exist", func(t *testing.T) {
+		found, err := DeleteRequestToJoinTeam(nil, uuid.Must(uuid.NewV4()))
+
+		assert.NoError(t, err)
+		assert.Equal(t, false, found)
+	})
+}
+
 func TestGetRequestsToJoinTeam(t *testing.T) {
 	now := time.Date(2019, 6, 19, 16, 35, 41, 0, time.UTC)
 
@@ -314,6 +333,19 @@ func deleteTestTeam(t *testing.T) {
 	t.Helper()
 	_, err := DeleteTeam(nil, testUUID)
 	assert.NoError(t, err)
+}
+
+func createTestRequestToJoinTeam(t *testing.T) uuid.UUID {
+	t.Helper()
+	requestUUID, err := CreateRequestToJoinTeam(nil,
+		testUUID,
+		"test4@example.com",
+		exampledata.ExampleFingerprint4,
+		later,
+	)
+	assert.NoError(t, err)
+
+	return *requestUUID
 }
 
 var (
