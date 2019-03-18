@@ -337,8 +337,23 @@ func getTeamRosterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
-	writeJsonError(w, fmt.Errorf("not implemented"), http.StatusNotFound)
-	return
+	requestUUID, err := uuid.FromString(mux.Vars(r)["requestUUID"])
+	if err != nil {
+		writeJsonError(w, fmt.Errorf("error parsing request UUID: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	found, err := datastore.DeleteRequestToJoinTeam(nil, requestUUID)
+	if err != nil {
+		writeJsonError(w, fmt.Errorf("error deleting request: %v", err), http.StatusInternalServerError)
+		return
+	} else if !found {
+		writeJsonError(w, fmt.Errorf("no request matching that UUID"), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+	w.Write(nil)
 }
 
 var (

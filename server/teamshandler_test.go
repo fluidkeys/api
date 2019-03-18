@@ -13,6 +13,7 @@ import (
 	"github.com/fluidkeys/crypto/openpgp"
 	"github.com/fluidkeys/fluidkeys/assert"
 	"github.com/fluidkeys/fluidkeys/exampledata"
+	"github.com/fluidkeys/fluidkeys/fingerprint"
 	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/fluidkeys/fluidkeys/team"
@@ -755,6 +756,111 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 			assertHasJSONErrorDetail(t, secondResponse.Body,
 				"already got request to join team with that email and fingerprint")
 		})
+	})
+}
+
+func TestDeleteRequestToJoinTeamHandler(t *testing.T) {
+	teamUUID, err := uuid.FromString("74bb40b4-3510-11e9-968e-53c38df634be")
+	assert.NoError(t, err)
+
+	goodRoster := `
+uuid = "74bb40b4-3510-11e9-968e-53c38df634be"
+
+[[person]]
+email = "test4@example.com"
+fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+`
+	unlockedKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(
+		exampledata.ExamplePrivateKey4, "test4")
+
+	now := time.Date(2019, 2, 10, 16, 35, 45, 0, time.UTC)
+
+	goodSignature, err := unlockedKey.MakeArmoredDetachedSignature([]byte(goodRoster))
+	assert.NoError(t, err)
+
+	goodTeam := datastore.Team{
+		UUID:            teamUUID,
+		Roster:          goodRoster,
+		RosterSignature: goodSignature,
+		CreatedAt:       now,
+	}
+
+	setup := func() uuid.UUID {
+		assert.NoError(t,
+			datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
+
+		assert.NoError(t,
+			datastore.LinkEmailToFingerprint(
+				nil, "test4@example.com", exampledata.ExampleFingerprint4,
+			),
+		)
+
+		assert.NoError(t,
+			datastore.UpsertTeam(nil, goodTeam),
+		)
+
+		requestUUID, err := datastore.CreateRequestToJoinTeam(
+			nil,
+			teamUUID,
+			"request@example.com",
+			fingerprint.MustParse("AAAABBBBAAAABBBBAAAABBBBAAAABBBBAAAABBBB"),
+			now,
+		)
+		assert.NoError(t, err)
+		return *requestUUID
+	}
+
+	teardown := func() {
+		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.NoError(t, err)
+
+		_, err = datastore.DeleteTeam(nil, teamUUID)
+		assert.NoError(t, err)
+	}
+
+	requestToJoinUUID := setup()
+	defer teardown()
+
+	t.Run("deletes a request", func(t *testing.T) {
+		response := callAPI(
+			t,
+			"DELETE",
+			fmt.Sprintf("/v1/team/%s/requests-to-join/%s", teamUUID, requestToJoinUUID),
+			nil,
+			nil,
+		)
+
+		t.Run("status code 202", func(t *testing.T) {
+			assertStatusCode(t, http.StatusAccepted, response.Code)
+		})
+
+		t.Run("removes request from datastore", func(t *testing.T) {
+			requestsToJoinTeam, err := datastore.GetRequestsToJoinTeam(nil, teamUUID)
+			assert.NoError(t, err)
+			assert.Equal(t, 0, len(requestsToJoinTeam))
+		})
+	})
+
+	t.Run("returns bad request for invalid request UUID", func(t *testing.T) {
+		response := callAPI(
+			t,
+			"DELETE",
+			fmt.Sprintf("/v1/team/%s/requests-to-join/invalid-uuid", teamUUID),
+			nil,
+			nil,
+		)
+		assertStatusCode(t, http.StatusBadRequest, response.Code)
+	})
+
+	t.Run("returns not found for missing request UUID", func(t *testing.T) {
+		response := callAPI(
+			t,
+			"DELETE",
+			fmt.Sprintf("/v1/team/%s/requests-to-join/%s", teamUUID, uuid.Must(uuid.NewV4())),
+			nil,
+			nil,
+		)
+		assertStatusCode(t, http.StatusNotFound, response.Code)
 	})
 }
 
