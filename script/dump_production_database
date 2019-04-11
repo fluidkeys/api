@@ -1,0 +1,59 @@
+#!/bin/bash -eux
+
+export APP="fluidkeys-api"
+
+trap delete_dumps 0 1 2 3 6 9 14 15
+
+capture_database_backup() {
+    heroku pg:backups:capture --app "${APP}"
+}
+
+get_latest_database_dump() {
+    DUMP_FILE=heroku_production_database.dump
+
+    if [ ! -f ${DUMP_FILE} ]; then
+        BACKUP_URL=$(heroku pg:backups public-url -a DATABASE_URL --app "${APP}")
+        curl -o ${DUMP_FILE} ${BACKUP_URL}
+    fi
+}
+
+convert_to_sql_file() {
+    SQL_FILE=${DUMP_FILE}.sql
+    pg_restore --no-acl --no-owner -f ${SQL_FILE} ${DUMP_FILE}
+}
+
+print_load_instructions() {
+    set +x
+    echo
+    echo "now in the Vagrant VM, run these commands:"
+    echo
+
+    echo 'dropdb ${USER}'
+    echo 'createdb ${USER}'
+    echo 'TEMP_LOG=$(mktemp --suffix .log)'
+    echo "psql < ${SQL_FILE}" '> ${TEMP_LOG}'
+    echo 'less ${TEMP_LOG}'
+
+    echo
+
+    read -p "When you're done, press [enter] key to delete the dump"
+    set -x
+}
+
+delete_dumps() {
+
+    if [ -s "${SQL_FILE}" ]; then
+        echo "Deleting ${SQL_FILE}"
+        rm "${SQL_FILE}"
+    fi
+
+    if [ -s "${DUMP_FILE}" ]; then
+        echo "Deleting ${DUMP_FILE}"
+        rm "${DUMP_FILE}"
+    fi
+}
+
+get_latest_database_dump
+convert_to_sql_file
+print_load_instructions
+delete_dumps
