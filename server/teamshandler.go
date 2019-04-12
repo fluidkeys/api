@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/fluidkeys/api/datastore"
@@ -59,7 +58,7 @@ func upsertTeamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newTeam, err := team.Parse(strings.NewReader(requestData.TeamRoster))
+	newTeam, err := team.Load(requestData.TeamRoster, requestData.ArmoredDetachedSignature)
 	if err != nil {
 		writeJsonError(w, err, http.StatusBadRequest)
 		return
@@ -154,7 +153,7 @@ func loadExistingTeam(txn *sql.Tx, teamUUID uuid.UUID) (*team.Team, error) {
 		return nil, err
 	}
 
-	team, err := team.Parse(strings.NewReader(dbTeam.Roster))
+	team, err := team.Load(dbTeam.Roster, dbTeam.RosterSignature)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse team from roster stored in db: %v", err)
 	}
@@ -303,7 +302,7 @@ func getTeamRosterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	team, err := team.Parse(strings.NewReader(dbTeam.Roster))
+	team, err := team.Load(dbTeam.Roster, dbTeam.RosterSignature)
 	if err != nil {
 		writeJsonError(w, err, http.StatusBadRequest)
 		return

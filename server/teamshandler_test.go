@@ -278,18 +278,19 @@ is_admin = true
 			{
 				testName:            "team UUID is all zeroes",
 				roster:              "uuid = \"00000000-0000-0000-0000-000000000000\"\n\n",
-				expectedErrorDetail: "invalid roster: invalid UUID",
+				expectedErrorDetail: "error validating team: invalid roster: invalid UUID",
 			},
 			{
-				testName:            "email address appears twice",
-				roster:              emailAddressTwice,
-				expectedErrorDetail: "email listed more than once: test4@example.com",
+				testName: "email address appears twice",
+				roster:   emailAddressTwice,
+				expectedErrorDetail: "error validating team: email listed more than once: " +
+					"test4@example.com",
 			},
 			{
 				testName: "fingerprint appears twice",
 				roster:   fingerprintTwice,
-				expectedErrorDetail: "fingerprint listed more than once: BB3C 44BF 188D 56E6 " +
-					"35F4  A092 F73D 2F05 33D7 F9D6",
+				expectedErrorDetail: "error validating team: fingerprint listed more than once: " +
+					"BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6",
 			},
 			{
 				testName:            "signing key's fingerprint missing from roster",
@@ -505,8 +506,14 @@ func makeSignedRequest(t *testing.T, roster string, privateKey *pgpkey.PgpKey) v
 func TestGetTeamHandler(t *testing.T) {
 	now := time.Date(2019, 2, 28, 16, 35, 45, 0, time.UTC)
 	exampleTeam := datastore.Team{
-		UUID:            uuid.Must(uuid.FromString("aee4b386-3b52-11e9-a620-2381a199e2c8")),
-		Roster:          "name = \"Example Team\"",
+		UUID: uuid.Must(uuid.FromString("aee4b386-3b52-11e9-a620-2381a199e2c8")),
+		Roster: `uuid = "aee4b386-3b52-11e9-a620-2381a199e2c8"
+		name = "Example Team"
+
+		[[person]]
+			email = "test4@example.com"
+			fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+			is_admin = true`,
 		RosterSignature: "",
 		CreatedAt:       now,
 	}
@@ -872,7 +879,8 @@ func TestGetTeamRoster(t *testing.T) {
 
 			[[ person ]]
 			email = "test4@example.com"
-            fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"`
+			fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+			is_admin = true`
 
 	team := datastore.Team{
 		UUID:            uuid.Must(uuid.FromString("18d12a10-4678-11e9-ba93-2385e4a50ded")),
