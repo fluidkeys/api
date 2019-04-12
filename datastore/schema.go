@@ -104,14 +104,19 @@ var migrateDatabaseStatements = []string{
 				ALTER TABLE email_verifications DROP COLUMN IF EXISTS id;
 		END IF;
 	END $$`,
+
+	`ALTER TABLE email_key_link
+	     ADD COLUMN IF NOT EXISTS email_verification_uuid UUID
+		     REFERENCES email_verifications(uuid)
+		     ON DELETE SET NULL`,
 }
 
 // allTables is used by the test helper DropAllTheTables to keep track of what tables to
 // tear down after running tests
 var allTables = []string{
 	"single_use_uuids",
-	"email_verifications",
 	"email_key_link",
+	"email_verifications",
 	"secrets",
 	"keys",
 	"team_join_requests",
