@@ -304,7 +304,7 @@ func getTeamRosterHandler(w http.ResponseWriter, r *http.Request) {
 
 	team, err := team.Load(dbTeam.Roster, dbTeam.RosterSignature)
 	if err != nil {
-		writeJsonError(w, err, http.StatusBadRequest)
+		writeJsonError(w, err, http.StatusInternalServerError)
 		return
 	}
 
