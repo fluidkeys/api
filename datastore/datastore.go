@@ -3,12 +3,14 @@ package datastore
 import (
 	"database/sql"
 	"fmt"
-	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
-	"github.com/fluidkeys/fluidkeys/pgpkey"
-	"github.com/gofrs/uuid"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/fluidkeys/fluidkeys/fingerprint"
+	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
+	"github.com/fluidkeys/fluidkeys/pgpkey"
+	"github.com/gofrs/uuid"
 
 	// required rename for SQL
 	_ "github.com/lib/pq"
@@ -109,13 +111,26 @@ func DeletePublicKey(fingerprint fpr.Fingerprint) (found bool, err error) {
 // when queried for the given email address.
 // If there is no public key in the database matching the fingerprint, an
 // error will be returned.
-func LinkEmailToFingerprint(txn *sql.Tx, email string, fingerprint fpr.Fingerprint) error {
-	query := `INSERT INTO email_key_link (email, key_id)
-	          VALUES($1, (SELECT id FROM keys WHERE fingerprint=$2))
-		  ON CONFLICT(email) DO UPDATE
-		      SET key_id=EXCLUDED.key_id`
+func LinkEmailToFingerprint(
+	txn *sql.Tx, email string, fingerprint fpr.Fingerprint,
+	verificationUUID *uuid.UUID) error {
 
-	_, err := transactionOrDatabase(txn).Exec(query, email, dbFormat(fingerprint))
+	query := `INSERT INTO email_key_link (email, key_id, email_verification_uuid)
+              VALUES(
+                  $1,
+                  (SELECT id FROM keys WHERE fingerprint=$2),
+                  $3
+              )
+              ON CONFLICT(email) DO UPDATE
+              SET key_id=EXCLUDED.key_id,
+                  email_verification_uuid=EXCLUDED.email_verification_uuid`
+
+	_, err := transactionOrDatabase(txn).Exec(
+		query,
+		email,
+		dbFormat(fingerprint),
+		verificationUUID,
+	)
 	return err
 }
 
@@ -246,29 +261,33 @@ func MarkVerificationAsVerified(txn *sql.Tx, secretUUID uuid.UUID,
 
 // GetVerification returns the email and fingerprint of a currently-active email_verification
 // for the given secret UUID token.
-func GetVerification(txn *sql.Tx, secretUUID uuid.UUID, now time.Time) (string, *fpr.Fingerprint, error) {
-	query := `SELECT email_sent_to, key_fingerprint
-                  FROM email_verifications
-                  WHERE uuid=$1
-                  AND valid_until > $2`
-	var email string
+func GetVerification(txn *sql.Tx, secretUUID uuid.UUID, now time.Time) (*EmailVerification, error) {
+	query := `SELECT
+                  uuid,
+                  email_sent_to,
+                  key_fingerprint
+              FROM email_verifications
+              WHERE uuid=$1
+              AND valid_until > $2`
+
+	v := EmailVerification{}
 	var fingerprintString string
 
 	err := transactionOrDatabase(txn).QueryRow(query, secretUUID, now).Scan(
-		&email, &fingerprintString,
+		&v.UUID, &v.EmailSentTo, &fingerprintString,
 	)
 	if err == sql.ErrNoRows {
-		return "", nil, fmt.Errorf("no such verification token '%s'", secretUUID)
+		return nil, fmt.Errorf("no such verification token '%s'", secretUUID)
 	} else if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
-	fingerprint, err := parseDbFormat(fingerprintString)
+	v.KeyFingerprint, err = parseDbFormat(fingerprintString)
 	if err != nil {
-		return "", nil, fmt.Errorf("error parsing fingerprint '%s': %v",
-			fingerprintString, err)
+		return nil, fmt.Errorf("error parsing fingerprint '%s': %v", fingerprintString, err)
 	}
-	return email, &fingerprint, nil
+
+	return &v, nil
 }
 
 // HasActiveVerificationForEmail returns whether we recently sent a
@@ -526,4 +545,11 @@ type secret struct {
 	ArmoredEncryptedSecret string
 	SecretUUID             string
 	CreatedAt              time.Time
+}
+
+// EmailVerification represents the data in the email_verifications database table
+type EmailVerification struct {
+	UUID           *uuid.UUID
+	EmailSentTo    string
+	KeyFingerprint fingerprint.Fingerprint
 }

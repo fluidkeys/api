@@ -47,7 +47,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 
 		assert.NoError(t,
 			datastore.LinkEmailToFingerprint(
-				nil, "test4@example.com", exampledata.ExampleFingerprint4,
+				nil, "test4@example.com", exampledata.ExampleFingerprint4, nil,
 			),
 		)
 
@@ -119,7 +119,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 
 		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey2))
 		assert.NoError(t,
-			datastore.LinkEmailToFingerprint(nil, "test2@example.com", mismatchedFingerprint))
+			datastore.LinkEmailToFingerprint(nil, "test2@example.com", mismatchedFingerprint, nil))
 
 		assert.NoError(t, err)
 

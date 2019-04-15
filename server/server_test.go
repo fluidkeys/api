@@ -5,6 +5,15 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/v1structs"
 	"github.com/fluidkeys/crypto/openpgp"
@@ -15,14 +24,6 @@ import (
 	"github.com/fluidkeys/fluidkeys/fingerprint"
 	"github.com/fluidkeys/fluidkeys/pgpkey"
 	"github.com/gofrs/uuid"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestMain(m *testing.M) {
@@ -68,10 +69,14 @@ func TestGetPublicKeyByEmailHandler(t *testing.T) {
 		datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4),
 	)
 	assert.NoError(t,
-		datastore.LinkEmailToFingerprint(nil, "test4@example.com", exampledata.ExampleFingerprint4),
+		datastore.LinkEmailToFingerprint(
+			nil, "test4@example.com", exampledata.ExampleFingerprint4, nil,
+		),
 	)
 	assert.NoError(t,
-		datastore.LinkEmailToFingerprint(nil, "test4+foo@example.com", exampledata.ExampleFingerprint4),
+		datastore.LinkEmailToFingerprint(
+			nil, "test4+foo@example.com", exampledata.ExampleFingerprint4, nil,
+		),
 	)
 
 	t.Run("JSON endpoint", func(t *testing.T) {
