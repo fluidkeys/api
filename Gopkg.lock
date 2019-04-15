@@ -10,7 +10,8 @@
   version = "v0.3.1"
 
 [[projects]]
-  digest = "1:ace3142d1c330736b91b01355276568b90431cedf4d9469798568ef2ba1d64f5"
+  branch = "master"
+  digest = "1:1b08965cbe0b8ebd251bd448a08df2b70a0a5bbfb35e59985d6c7f5a04cbc4ec"
   name = "github.com/fluidkeys/crypto"
   packages = [
     "cast5",
@@ -23,10 +24,10 @@
     "openpgp/s2k",
   ]
   pruneopts = "UT"
-  revision = "2018-09-13"
+  revision = "d1eb919c5d7a79d47db3bed84c8637648a60ab27"
 
 [[projects]]
-  digest = "1:aefa0d46b968db81f4efde71670598fe9a59e98da57dcfb303d1d0652c42a27b"
+  digest = "1:a35a1bb8f243b75e2056797c8581e0dd10440930851a4a001f365ca7671fa394"
   name = "github.com/fluidkeys/fluidkeys"
   packages = [
     "assert",
@@ -41,7 +42,7 @@
     "team",
   ]
   pruneopts = "UT"
-  revision = "4288d559eb02583052f1dbf89d5d2e8b0810342c"
+  revision = "8caab409b98a09b6a15183791f13631d95572025"
 
 [[projects]]
   digest = "1:c594a691090b434d55c67f6cc8e326ef5ba49452abc059821bd5d4fd4cdef08c"
@@ -78,14 +79,6 @@
   revision = "4ded0e9383f75c197b3a2aaa6d590ac52df6fd79"
   version = "v1.0.0"
 
-[[projects]]
-  branch = "master"
-  digest = "1:b7828e0269971efd2ab9789d3a4c73d0504fcc8ede95ee2fa2bda3e5f873ffad"
-  name = "github.com/natefinch/atomic"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "a62ce929ffcc871a51e98c6eba7b20321e3ed62d"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -93,6 +86,7 @@
     "github.com/fluidkeys/crypto/openpgp",
     "github.com/fluidkeys/crypto/openpgp/armor",
     "github.com/fluidkeys/crypto/openpgp/clearsign",
+    "github.com/fluidkeys/crypto/openpgp/errors",
     "github.com/fluidkeys/crypto/openpgp/packet",
     "github.com/fluidkeys/fluidkeys/assert",
     "github.com/fluidkeys/fluidkeys/exampledata",
