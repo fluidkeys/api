@@ -123,7 +123,8 @@ var migrateDatabaseStatements = []string{
 	    WHERE email_key_link.email = email_verifications.email_sent_to
 	    AND email_verifications.verify_ip_address IS NOT NULL
 	  ) B
-	WHERE email_key_link.id = B.email_key_link_id`,
+	WHERE email_key_link.id = B.email_key_link_id AND
+          email_key_link.email_verification_uuid IS NULL`,
 }
 
 // allTables is used by the test helper DropAllTheTables to keep track of what tables to
