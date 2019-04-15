@@ -109,6 +109,21 @@ var migrateDatabaseStatements = []string{
 	     ADD COLUMN IF NOT EXISTS email_verification_uuid UUID
 		     REFERENCES email_verifications(uuid)
 		     ON DELETE SET NULL`,
+
+	`UPDATE
+	  email_key_link
+	SET
+	  email_verification_uuid=B.email_verification_uuid
+	FROM
+	  (
+	    SELECT email_key_link.id AS email_key_link_id,
+	           email_verifications.uuid AS email_verification_uuid
+	    FROM email_key_link
+	    JOIN email_verifications ON email_key_link.key_id = email_verifications.key_id
+	    WHERE email_key_link.email = email_verifications.email_sent_to
+	    AND email_verifications.verify_ip_address IS NOT NULL
+	  ) B
+	WHERE email_key_link.id = B.email_key_link_id`,
 }
 
 // allTables is used by the test helper DropAllTheTables to keep track of what tables to
