@@ -3,7 +3,7 @@ package datastore
 var migrateDatabaseStatements = []string{
 	`CREATE TABLE IF NOT EXISTS keys (
                 id BIGSERIAL PRIMARY KEY,
-              
+
                 -- fingerprint is the uppercase hex version of the fingerprint,
 		-- prepended by the version number and a colon, e.g.
                 -- 4:A999B7498D1A8DC473E53C92309F635DAD1B5517
@@ -17,10 +17,10 @@ var migrateDatabaseStatements = []string{
                 --
                 -- If the key is deleted, the email should be deleted too since it's not used
                 -- for anything but mapping to a key.
-                
+
                 id BIGSERIAL PRIMARY KEY,
                 email VARCHAR UNIQUE NOT NULL,
-    
+
                 key_id INT UNIQUE NOT NULL REFERENCES keys(id) ON DELETE CASCADE
          )`,
 
@@ -88,7 +88,22 @@ var migrateDatabaseStatements = []string{
                 team_uuid UUID NOT NULL REFERENCES teams(uuid) ON DELETE CASCADE,
 
                 UNIQUE (team_uuid, email)
-    )`,
+	)`,
+
+	`DO $$
+	BEGIN
+		IF EXISTS(SELECT *
+				FROM information_schema.columns
+				WHERE table_name='email_verifications' and column_name='secret_uuid')
+		THEN
+				ALTER TABLE email_verifications DROP CONSTRAINT IF EXISTS
+					email_verifications_secret_uuid_key;
+				ALTER TABLE email_verifications RENAME secret_uuid TO uuid;
+				ALTER TABLE email_verifications DROP CONSTRAINT email_verifications_pkey;
+				ALTER TABLE email_verifications ADD PRIMARY KEY(uuid);
+				ALTER TABLE email_verifications DROP COLUMN IF EXISTS id;
+		END IF;
+	END $$`,
 }
 
 // allTables is used by the test helper DropAllTheTables to keep track of what tables to
