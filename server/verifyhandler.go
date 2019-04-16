@@ -52,19 +52,21 @@ func verifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 // * updates the email_verification's verify_user_agent, verify_ip_address
 func verifyEmailByUUID(secretUUID uuid.UUID, userAgent string, ipAddress string) error {
 	return datastore.RunInTransaction(func(txn *sql.Tx) error {
-		email, fingerprint, err := datastore.GetVerification(txn, secretUUID, time.Now())
+		verification, err := datastore.GetVerification(txn, secretUUID, time.Now())
 		if err != nil {
 			return fmt.Errorf("error getting verification: %v", err)
 		}
 
-		_, alreadyLinked, err := datastore.GetArmoredPublicKeyForEmail(txn, email)
+		_, alreadyLinked, err := datastore.GetArmoredPublicKeyForEmail(txn, verification.EmailSentTo)
 		if err != nil {
 			return err
 		} else if alreadyLinked {
 			return fmt.Errorf("email is already linked to a key")
 		}
 
-		err = datastore.LinkEmailToFingerprint(txn, email, *fingerprint)
+		err = datastore.LinkEmailToFingerprint(txn,
+			verification.EmailSentTo, verification.KeyFingerprint, verification.UUID,
+		)
 		if err != nil {
 			return fmt.Errorf("Error linking email to key: %v", err)
 		}
