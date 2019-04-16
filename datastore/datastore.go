@@ -215,7 +215,7 @@ func CreateVerification(
 	query := `INSERT INTO email_verifications (
                       created_at,
 		      valid_until,
-                      secret_uuid,
+                      uuid,
                       key_id,
                       key_fingerprint,
                       email_sent_to,
@@ -238,23 +238,25 @@ func MarkVerificationAsVerified(txn *sql.Tx, secretUUID uuid.UUID,
 
 	query := `UPDATE email_verifications
 		         SET (verify_user_agent, verify_ip_address) = ($2, $3)
-			 WHERE secret_uuid=$1`
+			 WHERE uuid=$1`
 
-	_, err := txn.Exec(query, secretUUID, userAgent, ipAddress)
+	_, err := transactionOrDatabase(txn).Exec(query, secretUUID, userAgent, ipAddress)
 	return err
 }
 
 // GetVerification returns the email and fingerprint of a currently-active email_verification
 // for the given secret UUID token.
-func GetVerification(txn *sql.Tx, secretUUID uuid.UUID) (string, *fpr.Fingerprint, error) {
+func GetVerification(txn *sql.Tx, secretUUID uuid.UUID, now time.Time) (string, *fpr.Fingerprint, error) {
 	query := `SELECT email_sent_to, key_fingerprint
                   FROM email_verifications
-                  WHERE secret_uuid=$1
-                  AND valid_until > now()`
+                  WHERE uuid=$1
+                  AND valid_until > $2`
 	var email string
 	var fingerprintString string
 
-	err := txn.QueryRow(query, secretUUID).Scan(&email, &fingerprintString)
+	err := transactionOrDatabase(txn).QueryRow(query, secretUUID, now).Scan(
+		&email, &fingerprintString,
+	)
 	if err == sql.ErrNoRows {
 		return "", nil, fmt.Errorf("no such verification token '%s'", secretUUID)
 	} else if err != nil {
