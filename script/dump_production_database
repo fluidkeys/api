@@ -53,6 +53,7 @@ delete_dumps() {
     fi
 }
 
+capture_database_backup
 get_latest_database_dump
 convert_to_sql_file
 print_load_instructions
