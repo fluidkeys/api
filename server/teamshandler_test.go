@@ -937,7 +937,12 @@ func TestGetTeamRoster(t *testing.T) {
 			)
 			assert.NoError(t, err)
 
+			if responseData.EncryptedJSON == "" {
+				t.Fatal("empty encryptedJSON response")
+			}
+
 			ciphertext, err := decryptMessage(responseData.EncryptedJSON, unlockedKey)
+			assert.NoError(t, err)
 
 			// decrypted JSON decodes as TeamRosterAndSignature?
 			teamRosterAndSignature := v1structs.TeamRosterAndSignature{}
