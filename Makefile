@@ -2,9 +2,9 @@
 run:
 	firejail --seccomp.drop=sendfile realize start
 
-.PHONY: run_collectors
-run_collectors:
-	go run main.go collect
+.PHONY: print_expired_keys
+print_expired_keys:
+	go run cmd/printexpiredkeys/printexpiredkeys.go
 
 .PHONY: migrate
 migrate:
