@@ -126,6 +126,15 @@ var migrateDatabaseStatements = []string{
 	WHERE email_key_link.id = B.email_key_link_id AND
           email_key_link.email_verification_uuid IS NULL`,
 
+	`CREATE TABLE IF NOT EXISTS user_profiles (
+                uuid UUID PRIMARY KEY,
+
+                optout_emails_expiry_warnings       BOOL NOT NULL DEFAULT FALSE,
+
+                -- if the key is deleted, delete the user profile too
+                key_id INT UNIQUE NOT NULL REFERENCES keys(id) ON DELETE CASCADE
+    )`,
+
 	`CREATE TABLE IF NOT EXISTS emails_sent (
                 sent_at TIMESTAMP NOT NULL,
 
@@ -146,6 +155,7 @@ var allTables = []string{
 	"email_verifications",
 	"secrets",
 	"emails_sent",
+	"user_profiles",
 	"keys",
 	"team_join_requests",
 	"teams",
