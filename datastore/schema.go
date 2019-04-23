@@ -125,6 +125,26 @@ var migrateDatabaseStatements = []string{
 	  ) B
 	WHERE email_key_link.id = B.email_key_link_id AND
           email_key_link.email_verification_uuid IS NULL`,
+
+	`CREATE TABLE IF NOT EXISTS emails_sent (
+                sent_at TIMESTAMP NOT NULL,
+
+				to_header TEXT NOT NULL,
+				from_header TEXT NOT NULL,
+				reply_to_header TEXT NOT NULL,
+				bcc_header TEXT NOT NULL,
+				subject TEXT NOT NULL,
+				plaintext_body TEXT NOT NULL,
+				html_body TEXT NOT NULL,
+				raw_email TEXT NOT NULL,
+
+				-- email_id refers to a specific predefined email
+				-- for example 'help_create_join_team_1'
+				-- if NULL, it's a custom email
+				email_id TEXT NULL,
+
+                user_profile_uuid UUID UNIQUE NOT NULL REFERENCES user_profiles(uuid) ON DELETE CASCADE
+	)`,
 }
 
 // allTables is used by the test helper DropAllTheTables to keep track of what tables to
@@ -134,6 +154,7 @@ var allTables = []string{
 	"email_key_link",
 	"email_verifications",
 	"secrets",
+	"emails_sent",
 	"keys",
 	"team_join_requests",
 	"teams",
