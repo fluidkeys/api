@@ -169,23 +169,9 @@ type email struct {
 	htmlBody string
 }
 
-func inferTemplateName(emailTemplateData interface{}) (string, error) {
-	switch emailTemplateData.(type) {
-	case verifyEmail:
-		return "verify", nil
-	}
-
-	return "", fmt.Errorf("failed to get template name from data: %v", emailTemplateData)
-}
-
 func (e *email) renderSubjectAndBody(data interface{}) (err error) {
-	templateName, err := inferTemplateName(data)
-	if err != nil {
-		return err
-	}
-
-	switch templateName {
-	case "verify":
+	switch data.(type) {
+	case verifyEmail:
 		e.subject, err = render(verifySubjectTemplate, data)
 		if err != nil {
 			return err
@@ -197,7 +183,7 @@ func (e *email) renderSubjectAndBody(data interface{}) (err error) {
 		}
 
 	default:
-		return fmt.Errorf("unknown template: %s", templateName)
+		return fmt.Errorf("unhandled email template struct: %s", data)
 	}
 
 	return nil
