@@ -81,3 +81,20 @@ func anyUIDHasExpired(key *pgpkey.PgpKey, now time.Time) bool {
 	}
 	return false
 }
+
+// UserProfile holds information about users (where a user is defined as a pgp public key)
+type UserProfile struct {
+	UUID                           uuid.UUID
+	KeyFirstUploadedAt             *time.Time
+	KeyLastUploadedAt              *time.Time
+	FirstFkVersion                 string
+	CurrentFkVersion               string
+	IsSubscribedToReleaseNotes     bool
+	IsSubscribedToWeekNotes        bool
+	IsSubscribedToFeedback         bool
+	PreferencesToken               uuid.UUID
+	OptoutEmailsHelpCreateJoinTeam bool
+	OptoutEmailsHelpInviteTeam     bool
+	OptoutEmailsHelpExpiryWarnings bool
+	Key                            *pgpkey.PgpKey
+}
