@@ -182,6 +182,17 @@ func (e *email) renderSubjectAndBody(data interface{}) (err error) {
 			return err
 		}
 
+	case helpCreateJoinTeam1Email:
+		e.subject, err = render(helpCreateJoinTeam1SubjectTemplate, data)
+		if err != nil {
+			return err
+		}
+
+		e.htmlBody, err = render(helpCreateJoinTeam1HtmlBodyTemplate, data)
+		if err != nil {
+			return err
+		}
+
 	default:
 		return fmt.Errorf("unhandled email template struct: %s", data)
 	}
