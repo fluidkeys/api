@@ -549,7 +549,9 @@ type secret struct {
 
 // EmailVerification represents the data in the email_verifications database table
 type EmailVerification struct {
-	UUID           *uuid.UUID
-	EmailSentTo    string
-	KeyFingerprint fingerprint.Fingerprint
+	CreatedAt       time.Time
+	UUID            *uuid.UUID
+	EmailSentTo     string
+	KeyFingerprint  fingerprint.Fingerprint
+	UpsertUserAgent string
 }
