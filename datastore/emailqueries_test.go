@@ -55,6 +55,50 @@ func TestGetTimeLastSent(t *testing.T) {
 	})
 }
 
+func TestRecordSentEmail(t *testing.T) {
+	profile := createKeyAndUserProfile(t)
+	defer func() {
+		_, err := db.Exec("DELETE FROM user_profiles")
+		assert.NoError(t, err)
+	}()
+	profileUUID := profile.UUID
+
+	now := time.Date(2019, 6, 12, 16, 35, 5, 0, time.UTC)
+
+	t.Run("creates correct database row", func(t *testing.T) {
+		deleteEmailsSent(t)
+
+		assert.NoError(t, RecordSentEmail(nil, "template_1", profileUUID, now))
+
+		var retrievedTemplateID string
+		var retrievedUserProfileUUID uuid.UUID
+		var retrievedSentAt time.Time
+
+		err := db.QueryRow(
+			`SELECT email_template_id, user_profile_uuid, sent_at FROM emails_sent`,
+		).Scan(&retrievedTemplateID, &retrievedUserProfileUUID, &retrievedSentAt)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "template_1", retrievedTemplateID)
+		assert.Equal(t, profileUUID, retrievedUserProfileUUID)
+		if !retrievedSentAt.Equal(now) {
+			t.Fatalf("expected retrievedSentAt=%s, got %s", retrievedSentAt, now)
+		}
+	})
+
+	t.Run("stores empty email template ID", func(t *testing.T) {
+		deleteEmailsSent(t)
+
+		assert.NoError(t, RecordSentEmail(nil, "", profileUUID, now))
+	})
+
+	t.Run("non-existent user profile UUID", func(t *testing.T) {
+		nonExistentUUID := uuid.Must(uuid.NewV4())
+		err := RecordSentEmail(nil, "template_1", nonExistentUUID, now)
+		assert.Equal(t, fmt.Errorf("no such user profile with UUID %s", nonExistentUUID), err)
+	})
+}
+
 func deleteEmailsSent(t *testing.T) {
 	t.Helper()
 

@@ -82,6 +82,32 @@ func GetTimeLastSent(txn *sql.Tx, emailTemplateID string, userProfileUUID uuid.U
 	return &sentAt, nil
 }
 
+// RecordSentEmail records that the given email type was sent to the given key
+func RecordSentEmail(txn *sql.Tx, emailTemplateID string, userProfileUUID uuid.UUID, now time.Time) error {
+	var count int
+	if err := transactionOrDatabase(txn).QueryRow(
+		"SELECT count(*) FROM user_profiles WHERE uuid=$1", userProfileUUID,
+	).Scan(&count); err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("no such user profile with UUID %s", userProfileUUID)
+	}
+
+	query := `INSERT INTO emails_sent(
+                  sent_at,
+                  user_profile_uuid,
+				  email_template_id
+              )
+	          VALUES ($1, $2, $3)`
+
+	_, err := transactionOrDatabase(txn).Exec(query, now, userProfileUUID, emailTemplateID)
+	if err != nil {
+		return fmt.Errorf("error inserting into db: %v", err)
+	}
+	return nil
+}
+
 func doesPrimaryEmailMatch(key *pgpkey.PgpKey, email string) bool {
 	keyEmail, err := key.Email()
 	if err != nil {
