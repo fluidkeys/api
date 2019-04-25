@@ -43,6 +43,9 @@ func ListExpiredKeys() (keys []*pgpkey.PgpKey, err error) {
 			keys = append(keys, key)
 		}
 	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 	return keys, nil
 }
 
