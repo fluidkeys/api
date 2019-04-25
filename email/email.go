@@ -172,6 +172,54 @@ func makeVerificationUrl(secretUUID uuid.UUID) string {
 	return fmt.Sprintf("https://api.fluidkeys.com/v1/email/verify/%s", secretUUID.String())
 }
 
+func sendEmail(
+	userProfileUUID uuid.UUID,
+	template emailTemplateInterface,
+	to string,
+	from string,
+	replyTo string,
+	rateLimit *time.Duration) error {
+
+	allowed, err := datastore.CanSendWithRateLimit(
+		template.ID(), userProfileUUID, rateLimit, time.Now(),
+	)
+	if err != nil {
+		return err
+	} else if !allowed {
+		return errRateLimit
+	}
+
+	email := email{
+		to:      to,
+		from:    from,
+		replyTo: replyTo,
+	}
+
+	err = template.RenderInto(&email)
+	if err != nil {
+		return fmt.Errorf("error rendering email: %v", err)
+	}
+
+	err = datastore.RunInTransaction(func(txn *sql.Tx) error {
+		now := time.Now()
+		if err := datastore.RecordSentEmail(txn, template.ID(), userProfileUUID, now); err != nil {
+			log.Printf("error in RecordSentEmail")
+			return err
+		}
+
+		if err := email.send(); err != nil {
+			return fmt.Errorf("error sending mail: %v", err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Printf("error sending email: %v", err)
+	}
+
+	return nil
+}
+
 type email struct {
 	to       string
 	from     string
@@ -306,6 +354,8 @@ var funcMap = template.FuncMap{
 		return t.Format("2 January 2006")
 	},
 }
+
+var errRateLimit = fmt.Errorf("rate limit: not sending same email so soon")
 
 const verifySubjectTemplate = "Verify {{.Email}} on Fluidkeys"
 const verifyHtmlBodyTemplate string = `<!DOCTYPE HTML>
