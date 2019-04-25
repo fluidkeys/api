@@ -99,6 +99,68 @@ func TestRecordSentEmail(t *testing.T) {
 	})
 }
 
+func TestCanSendWithRateLimit(t *testing.T) {
+	profile := createKeyAndUserProfile(t)
+	defer func() {
+		_, err := db.Exec("DELETE FROM user_profiles")
+		assert.NoError(t, err)
+	}()
+	profileUUID := profile.UUID
+
+	now := time.Date(2019, 6, 12, 16, 35, 5, 0, time.UTC)
+
+	t.Run("when no matching email has ever been sent", func(t *testing.T) {
+		deleteEmailsSent(t)
+		rateLimit := time.Duration(1) * time.Hour
+		allowed, err := CanSendWithRateLimit("template_1", profileUUID, &rateLimit, now)
+
+		assert.NoError(t, err)
+		assert.Equal(t, true, allowed)
+	})
+
+	t.Run("when an email was sent within rate limit (too recently)", func(t *testing.T) {
+		deleteEmailsSent(t)
+
+		tenMinutesAgo := now.Add(-time.Duration(10) * time.Minute)
+
+		assert.NoError(t, RecordSentEmail(nil, "template_1", profileUUID, tenMinutesAgo))
+
+		rateLimit := time.Duration(1) * time.Hour
+		allowed, err := CanSendWithRateLimit("template_1", profileUUID, &rateLimit, now)
+		assert.NoError(t, err)
+
+		assert.Equal(t, false, allowed)
+	})
+
+	t.Run("when an email was sent before (OK to send another)", func(t *testing.T) {
+		deleteEmailsSent(t)
+
+		twoHoursAgo := now.Add(-time.Duration(2) * time.Hour)
+
+		assert.NoError(t, RecordSentEmail(nil, "template_1", profileUUID, twoHoursAgo))
+
+		rateLimit := time.Duration(1) * time.Hour
+		allowed, err := CanSendWithRateLimit("template_1", profileUUID, &rateLimit, now)
+		assert.NoError(t, err)
+
+		assert.Equal(t, true, allowed)
+	})
+
+	t.Run("when no rate limit is given always return true", func(t *testing.T) {
+		deleteEmailsSent(t)
+
+		tenMinutesAgo := now.Add(-time.Duration(10) * time.Minute)
+
+		assert.NoError(t, RecordSentEmail(nil, "template_1", profileUUID, tenMinutesAgo))
+
+		var rateLimit *time.Duration // nil means "no rate limit"
+		allowed, err := CanSendWithRateLimit("template_1", profileUUID, rateLimit, now)
+		assert.NoError(t, err)
+
+		assert.Equal(t, true, allowed)
+	})
+}
+
 func deleteEmailsSent(t *testing.T) {
 	t.Helper()
 
