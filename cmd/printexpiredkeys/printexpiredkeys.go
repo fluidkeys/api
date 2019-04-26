@@ -23,7 +23,7 @@ func main() {
 	fmt.Printf("fingerprint,verified_emails,unverified_emails\n")
 	for _, expiredKey := range expiredKeys {
 		fmt.Printf("%s,\"%s\",\"%s\"\n",
-			expiredKey.Key.Fingerprint().Hex(),
+			expiredKey.UserProfile.Key.Fingerprint().Hex(),
 			strings.Join(expiredKey.VerifiedEmails, ","),
 			strings.Join(expiredKey.UnverifiedEmails, ","))
 	}

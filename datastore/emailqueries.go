@@ -100,7 +100,7 @@ func ListKeysExpiring() (keys []keyExpiring, err error) {
 }
 
 type expiredKey = struct {
-	Key              *pgpkey.PgpKey
+	UserProfile      *UserProfile
 	VerifiedEmails   []string
 	UnverifiedEmails []string
 }
@@ -109,7 +109,9 @@ type expiredKey = struct {
 // email on the key that's verified, preferably the "primary" UID but falling back to any
 // verified email.
 func ListExpiredKeys() (expiredKeys []expiredKey, err error) {
-	query := `SELECT keys.armored_public_key FROM keys`
+	query := `SELECT keys.id,
+                     keys.armored_public_key
+              FROM keys`
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -118,8 +120,9 @@ func ListExpiredKeys() (expiredKeys []expiredKey, err error) {
 	defer rows.Close()
 
 	for rows.Next() {
+		var keyID int
 		var armoredPublic string
-		err = rows.Scan(&armoredPublic)
+		err = rows.Scan(&keyID, &armoredPublic)
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +137,13 @@ func ListExpiredKeys() (expiredKeys []expiredKey, err error) {
 			continue
 		}
 
-		result := expiredKey{Key: key}
+		profile, err := loadUserProfile(nil, keyID)
+		if err != nil {
+			log.Printf("%s can't load user profile: %v", key.Fingerprint().Hex(), err)
+			continue
+		}
+
+		result := expiredKey{UserProfile: profile}
 
 		for _, email := range key.Emails(true) {
 			isVerified, err := QueryEmailVerifiedForFingerprint(nil, email, key.Fingerprint())
