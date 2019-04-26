@@ -206,6 +206,45 @@ func doesPrimaryEmailMatch(key *pgpkey.PgpKey, email string) bool {
 	return emailMatches(keyEmail, email)
 }
 
+// CanSendWithRateLimit looks up the last time we sent a given (user profile + email template)
+// combination in the database, and returns whether we're past the given rateLimit duration.
+//
+// For example, if we want to ensure we don't send `template_1` to `profile_1` more than once
+// per hour, we could use it like this:
+//
+// > canSendWithRateLimit(profile_1, template_1, time.Duration(1) * time.Hour)
+//
+// note that a rateLimit of `nil` means *unlimited* and will always return true. *use with care!*
+//
+// for emails intended to be sent only once (e.g. onboarding emails), consider using 1 year.
+// this way, we avoid completely stale information, and the person will get an (infrequent) reminder
+// that we still hold their information, giving them an opportunity to ask us to delete it.
+func CanSendWithRateLimit(
+	emailTemplateID string,
+	userProfileUUID uuid.UUID,
+	rateLimit *time.Duration,
+	now time.Time,
+) (bool, error) {
+
+	if rateLimit == nil {
+		return true, nil
+	}
+
+	timeLastSent, err := GetTimeLastSent(nil, emailTemplateID, userProfileUUID)
+	if err != nil {
+		return false, err
+	}
+
+	if timeLastSent == nil {
+		// never sent this type of email before to this user profile
+		return true, nil
+	}
+
+	nextAllowed := timeLastSent.Add(*rateLimit)
+
+	return now.After(nextAllowed), nil
+}
+
 func emailMatches(firstEmail string, secondEmail string) bool {
 	// TODO: make this less naive
 	return strings.ToLower(firstEmail) == strings.ToLower(secondEmail)
