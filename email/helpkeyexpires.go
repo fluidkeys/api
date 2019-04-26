@@ -27,7 +27,7 @@ func SendKeyExpiresEmails() error {
 		primaryEmail := keysExpiring[i].PrimaryEmail
 
 		switch daysUntilExpiry {
-		case 3, 5:
+		case 3:
 
 			templateData := helpKeyExpires3Days{
 				Email:       primaryEmail,
