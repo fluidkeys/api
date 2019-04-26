@@ -51,6 +51,18 @@ func init() {
 	}
 }
 
+// emailTemplateInterface is used to define a specific type of email.
+type emailTemplateInterface interface {
+	// ID must return a unique string for this type of email. This is stored in the database
+	// to ensure we don't send the same type of email multiple times.
+	// Example: `help_key_expires_3_days`
+	ID() string
+
+	// RenderInto should populate the subject and htmlBody fields in the given email struct, or
+	// return an error if that fails.
+	RenderInto(eml *email) error
+}
+
 type VerificationMetadata struct {
 	RequestUserAgent string
 	RequestIpAddress string
