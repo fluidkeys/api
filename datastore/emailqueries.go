@@ -1,11 +1,14 @@
 package datastore
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/fluidkeys/fluidkeys/pgpkey"
+	"github.com/gofrs/uuid"
 )
 
 // ListExpiredKeys returns all pgp keys that have expired.
@@ -47,6 +50,62 @@ func ListExpiredKeys() (keys []*pgpkey.PgpKey, err error) {
 		return nil, err
 	}
 	return keys, nil
+}
+
+// GetTimeLastSent returns the most recent the given email type was sent to the given key, or
+// nil if there's no record of it being sent
+func GetTimeLastSent(txn *sql.Tx, emailTemplateID string, userProfileUUID uuid.UUID) (
+	*time.Time, error) {
+
+	if emailTemplateID == "" {
+		return nil, fmt.Errorf("invalid emailTemplateID: cannot be empty")
+	}
+
+	query := `SELECT sent_at
+              FROM emails_sent
+			  WHERE email_template_id=$1
+			    AND user_profile_uuid=$2
+              ORDER BY sent_at DESC
+			  LIMIT 1`
+
+	var sentAt time.Time
+
+	err := transactionOrDatabase(txn).QueryRow(
+		query, emailTemplateID, userProfileUUID,
+	).Scan(&sentAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &sentAt, nil
+}
+
+// RecordSentEmail records that the given email type was sent to the given key
+func RecordSentEmail(txn *sql.Tx, emailTemplateID string, userProfileUUID uuid.UUID, now time.Time) error {
+	var count int
+	if err := transactionOrDatabase(txn).QueryRow(
+		"SELECT count(*) FROM user_profiles WHERE uuid=$1", userProfileUUID,
+	).Scan(&count); err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("no such user profile with UUID %s", userProfileUUID)
+	}
+
+	query := `INSERT INTO emails_sent(
+                  sent_at,
+                  user_profile_uuid,
+				  email_template_id
+              )
+	          VALUES ($1, $2, $3)`
+
+	_, err := transactionOrDatabase(txn).Exec(query, now, userProfileUUID, emailTemplateID)
+	if err != nil {
+		return fmt.Errorf("error inserting into db: %v", err)
+	}
+	return nil
 }
 
 func doesPrimaryEmailMatch(key *pgpkey.PgpKey, email string) bool {
