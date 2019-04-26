@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/fluidkeys/api/datastore"
 )
@@ -15,15 +16,15 @@ func main() {
 
 	expiredKeys, err := datastore.ListExpiredKeys()
 	if err != nil {
-		fmt.Printf("error sending emails: %v\n", err)
+		fmt.Printf("error listing expired keys: %v\n", err)
 		os.Exit(1)
 	}
 
-	for i := range expiredKeys {
-		email, err := expiredKeys[i].Email()
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("%s\n", email)
+	fmt.Printf("fingerprint,verified_emails,unverified_emails\n")
+	for _, expiredKey := range expiredKeys {
+		fmt.Printf("%s,\"%s\",\"%s\"\n",
+			expiredKey.Key.Fingerprint().Hex(),
+			strings.Join(expiredKey.VerifiedEmails, ","),
+			strings.Join(expiredKey.UnverifiedEmails, ","))
 	}
 }

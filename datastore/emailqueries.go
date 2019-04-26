@@ -99,12 +99,17 @@ func ListKeysExpiring() (keys []keyExpiring, err error) {
 	return keys, nil
 }
 
-// ListExpiredKeys returns all pgp keys that have expired.
-func ListExpiredKeys() (keys []*pgpkey.PgpKey, err error) {
-	query := `SELECT keys.armored_public_key,
-                     email_key_link.email
-              FROM email_key_link
-              INNER JOIN keys                ON email_key_link.key_id = keys.id`
+type expiredKey = struct {
+	Key              *pgpkey.PgpKey
+	VerifiedEmails   []string
+	UnverifiedEmails []string
+}
+
+// ListExpiredKeys returns all PGP keys that have expired. It populates VerifiedEmail with any
+// email on the key that's verified, preferably the "primary" UID but falling back to any
+// verified email.
+func ListExpiredKeys() (expiredKeys []expiredKey, err error) {
+	query := `SELECT keys.armored_public_key FROM keys`
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -114,8 +119,7 @@ func ListExpiredKeys() (keys []*pgpkey.PgpKey, err error) {
 
 	for rows.Next() {
 		var armoredPublic string
-		var verifiedEmail string
-		err = rows.Scan(&armoredPublic, &verifiedEmail)
+		err = rows.Scan(&armoredPublic)
 		if err != nil {
 			return nil, err
 		}
@@ -126,18 +130,30 @@ func ListExpiredKeys() (keys []*pgpkey.PgpKey, err error) {
 			continue
 		}
 
-		if !doesPrimaryEmailMatch(key, verifiedEmail) {
+		if !anyUIDHasExpired(key, time.Now()) {
 			continue
 		}
 
-		if anyUIDHasExpired(key, time.Now()) {
-			keys = append(keys, key)
+		result := expiredKey{Key: key}
+
+		for _, email := range key.Emails(true) {
+			isVerified, err := QueryEmailVerifiedForFingerprint(nil, email, key.Fingerprint())
+			if err != nil {
+				log.Printf("error calling QueryEmailVerifiedForFingerprint: %v", err)
+
+			} else if isVerified {
+				result.VerifiedEmails = append(result.VerifiedEmails, email)
+
+			} else {
+				result.UnverifiedEmails = append(result.UnverifiedEmails, email)
+			}
 		}
+		expiredKeys = append(expiredKeys, result)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
-	return keys, nil
+	return expiredKeys, nil
 }
 
 // GetTimeLastSent returns the most recent the given email type was sent to the given key, or
