@@ -26,43 +26,50 @@ func SendKeyExpiresEmails() error {
 		key := userProfile.Key
 		primaryEmail := keysExpiring[i].PrimaryEmail
 
+		var templateData emailTemplateInterface
+
 		switch daysUntilExpiry {
 		case 3:
-
-			templateData := helpKeyExpires3Days{
+			templateData = helpKeyExpires3Days{
 				Email:       primaryEmail,
 				Fingerprint: key.Fingerprint(),
 			}
 
-			// rate-limit this type of email to once every 7 days. this allows us to run this
-			// query multiple times on the same day without sending duplicate emails.
-			rateLimit := time.Duration(7*24) * time.Hour
-			err := sendEmail(
-				userProfile.UUID,
-				templateData,
-				primaryEmail,
-				from,
-				replyTo,
-				&rateLimit)
-
-			if err == errRateLimit {
-				numAlreadySent++
-				continue
-			} else if err != nil {
-				fmt.Printf("error sending email: %v\n", err)
-				numErrors++
-				continue
+		case 7:
+			templateData = helpKeyExpires7Days{
+				Email:       primaryEmail,
+				Fingerprint: key.Fingerprint(),
 			}
 
-			numSent++
-
-			fmt.Printf(
-				"sent 3-day reminder for %s to %s\n", key.Fingerprint().Hex(), primaryEmail,
-			)
+		case 14:
+			templateData = helpKeyExpires14Days{
+				Email:       primaryEmail,
+				Fingerprint: key.Fingerprint(),
+			}
 
 		default:
+			continue // don't send anything. next key.
+		}
+
+		// rate-limit this type of email to once every 7 days. this allows us to run this
+		// query multiple times on the same day without sending duplicate emails.
+		rateLimit := time.Duration(7*24) * time.Hour
+
+		err := sendEmail(userProfile.UUID, templateData, primaryEmail, from, replyTo, &rateLimit)
+		if err == errRateLimit {
+			numAlreadySent++
+			continue
+		} else if err != nil {
+			fmt.Printf("error sending email: %v\n", err)
+			numErrors++
 			continue
 		}
+
+		numSent++
+
+		fmt.Printf(
+			"sent %s for %s to %s\n", templateData.ID(), key.Fingerprint().Hex(), primaryEmail,
+		)
 	}
 
 	fmt.Printf("key expiring emails: %d sent, %d failed, %d already sent (rate-limited).\n",
@@ -71,6 +78,7 @@ func SendKeyExpiresEmails() error {
 	return nil
 }
 
+// -------------------- help_key_expires_3_days --------------------
 // helpKeyExpires3Days holds the data required to populate the
 // "help_key_expires_3_days" email template
 type helpKeyExpires3Days struct {
