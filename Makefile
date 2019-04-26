@@ -4,19 +4,19 @@ run:
 
 .PHONY: print_expired_keys
 print_expired_keys:
-	go run cmd/printexpiredkeys/printexpiredkeys.go
+	go run main.go print_expired_keys
 
 .PHONY: delete_expired_keys
 delete_expired_keys:
-	go run cmd/deleteexpiredkeys/deleteexpiredkeys.go
+	go run main.go delete_expired_keys
 
 .PHONY: send_emails
 send_emails:
-	go run cmd/sendemails/sendemails.go
+	go run main.go send_emails
 
 .PHONY: migrate
 migrate:
-	go run cmd/migrate/migrate.go
+	go run main.go migrate
 
 .PHONY: test
 test:

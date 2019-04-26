@@ -1,23 +1,17 @@
-package main
+package cmd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/fluidkeys/api/datastore"
 )
 
-func main() {
-	err := datastore.Initialize(datastore.MustReadDatabaseURL())
-	if err != nil {
-		panic(err)
-	}
-
+func PrintExpiredKeys() (exitCode int) {
 	expiredKeys, err := datastore.ListExpiredKeys()
 	if err != nil {
 		fmt.Printf("error listing expired keys: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	fmt.Printf("fingerprint,verified_emails,unverified_emails\n")
@@ -27,4 +21,5 @@ func main() {
 			strings.Join(expiredKey.VerifiedEmails, ","),
 			strings.Join(expiredKey.UnverifiedEmails, ","))
 	}
+	return 0
 }

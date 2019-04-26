@@ -1,3 +1,5 @@
+/api
+/main
 .vagrant/*
 .secrets.sh
 /api.log
