@@ -72,14 +72,14 @@ func init() {
 }
 
 // Serve initializes the database and runs http.ListenAndServer
-func Serve() error {
-	err := datastore.Initialize(datastore.MustReadDatabaseURL())
-	if err != nil {
-		panic(err)
-	}
-
+func Serve() (exitCode int) {
 	http.Handle("/", subrouter)
-	return http.ListenAndServe(getPort(), nil)
+	err := http.ListenAndServe(getPort(), nil)
+	if err != nil {
+		log.Printf("error from ListenAndServe: %v", err)
+		return 1
+	}
+	return 0
 }
 
 func getPort() string {

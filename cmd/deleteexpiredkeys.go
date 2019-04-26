@@ -1,29 +1,24 @@
-package main
+package cmd
 
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/email"
 )
 
-func main() {
-	err := datastore.Initialize(datastore.MustReadDatabaseURL())
-	if err != nil {
-		panic(err)
-	}
-
+func DeleteExpiredKeys() (exitCode int) {
 	expiredKeys, err := datastore.ListExpiredKeys()
 	if err != nil {
 		fmt.Printf("error listing expired keys: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	var keysDeleted int
 	var emailsSent int
+	var errorsSeen int
 
 	for _, expiredKey := range expiredKeys {
 		fmt.Printf("deleting key %s (verified emails: %s)",
@@ -38,9 +33,10 @@ func main() {
 			)
 
 			if err != nil {
-				log.Printf("%s eror sending email: %v",
+				log.Printf("%s error sending email: %v",
 					expiredKey.UserProfile.Key.Fingerprint(), err,
 				)
+				errorsSeen++
 				// carry on and delete the key anyway
 			} else {
 				emailsSent++
@@ -52,11 +48,16 @@ func main() {
 		if err != nil {
 			log.Printf("error calling DeletePublicKey(%s): %v",
 				expiredKey.UserProfile.Key.Fingerprint(), err)
+			errorsSeen++
 			continue
 		} else {
 			keysDeleted++
 		}
 	}
 
-	fmt.Printf("%d keys deleted, %d emails sent\n", keysDeleted, emailsSent)
+	fmt.Printf("%d keys deleted, %d emails sent, %d errors\n", keysDeleted, emailsSent, errorsSeen)
+	if errorsSeen > 0 {
+		return 1
+	}
+	return 0
 }
