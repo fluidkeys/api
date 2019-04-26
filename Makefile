@@ -6,6 +6,10 @@ run:
 print_expired_keys:
 	go run cmd/printexpiredkeys/printexpiredkeys.go
 
+.PHONY: delete_expired_keys
+delete_expired_keys:
+	go run cmd/deleteexpiredkeys/deleteexpiredkeys.go
+
 .PHONY: send_emails
 send_emails:
 	go run cmd/sendemails/sendemails.go
