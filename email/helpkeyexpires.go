@@ -167,3 +167,44 @@ If you don't extend your key, we'll automatically delete your public key from ou
 [0] https://www.fluidkeys.com
 
 Don't want to receive expiry reminders? Hit reply and let us know.`
+
+// -------------------- help_key_expires_14_days --------------------
+type helpKeyExpires14Days struct {
+	Email       string
+	Fingerprint fpr.Fingerprint
+}
+
+func (e helpKeyExpires14Days) ID() string { return "help_key_expires_14_days" }
+func (e helpKeyExpires14Days) RenderInto(eml *email) (err error) {
+	eml.subject = helpKeyExpires14DaysSubject
+	eml.htmlBody, err = render(helpKeyExpires14DaysBodyTemplate, e)
+	return err
+}
+
+const helpKeyExpires14DaysSubject = "⏰ Your PGP key expires in 14 days: extend it now"
+const helpKeyExpires14DaysBodyTemplate string = `You installed Fluidkeys[0] and uploaded a public key to our server. Fantastic!
+
+Normally, Fluidkeys extends and uploads your public key automatically to save you the hassle.
+
+It looks like something stopped working on your machine as we don't see an updated key on our server.
+
+In 14 days your key will expire and Fluidkeys will stop working.
+
+Email: {{.Email}}
+Key: {{.Fingerprint}}
+
+## Extend and upload your key
+
+You can extend and upload your key now by running:
+
+fk key maintain
+fk key upload
+
+It should ask you to switch on automatic maintenance so that this doesn't happen again.
+
+Any problems, hit reply and we'll help you out.
+
+
+[0] https://www.fluidkeys.com
+
+Don't want to receive expiry reminders? Hit reply and let us know.`
