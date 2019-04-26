@@ -4,3 +4,7 @@
 *.dump*
 
 *-cloudimg-console.log
+
+cmd/deleteexpiredkeys/deleteexpiredkeys
+cmd/printexpiredkeys/printexpiredkeys
+cmd/sendemails/sendemails
