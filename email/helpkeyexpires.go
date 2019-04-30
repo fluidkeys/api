@@ -89,7 +89,7 @@ type helpKeyExpires3Days struct {
 func (e helpKeyExpires3Days) ID() string { return "help_key_expires_3_days" }
 func (e helpKeyExpires3Days) RenderInto(eml *email) (err error) {
 	eml.subject = helpKeyExpires3DaysSubject
-	eml.htmlBody, err = renderHTML(helpKeyExpires3DaysBodyTemplate, e)
+	eml.textBody, err = renderText(helpKeyExpires3DaysBodyTemplate, e)
 	return err
 }
 
@@ -137,7 +137,7 @@ type helpKeyExpires7Days struct {
 func (e helpKeyExpires7Days) ID() string { return "help_key_expires_7_days" }
 func (e helpKeyExpires7Days) RenderInto(eml *email) (err error) {
 	eml.subject = helpKeyExpires7DaysSubject
-	eml.htmlBody, err = renderHTML(helpKeyExpires7DaysBodyTemplate, e)
+	eml.textBody, err = renderText(helpKeyExpires7DaysBodyTemplate, e)
 	return err
 }
 
@@ -185,7 +185,7 @@ type helpKeyExpires14Days struct {
 func (e helpKeyExpires14Days) ID() string { return "help_key_expires_14_days" }
 func (e helpKeyExpires14Days) RenderInto(eml *email) (err error) {
 	eml.subject = helpKeyExpires14DaysSubject
-	eml.htmlBody, err = renderHTML(helpKeyExpires14DaysBodyTemplate, e)
+	eml.textBody, err = renderText(helpKeyExpires14DaysBodyTemplate, e)
 	return err
 }
 
