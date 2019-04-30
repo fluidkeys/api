@@ -225,6 +225,7 @@ type email struct {
 	replyTo  string
 	bcc      string
 	subject  string
+	textBody string
 	htmlBody string
 }
 
@@ -264,8 +265,8 @@ func (e *email) renderSubjectAndBody(data interface{}) (err error) {
 
 func (e *email) send() error {
 
-	if e.htmlBody == "" {
-		return fmt.Errorf("empty HTML body")
+	if e.htmlBody == "" && e.textBody == "" {
+		return fmt.Errorf("empty htmlBody and textBody")
 	}
 
 	if e.subject == "" {
@@ -286,7 +287,11 @@ func (e *email) send() error {
 	header.Set(textproto.CanonicalMIMEHeaderKey("from"), e.from)
 	header.Set(textproto.CanonicalMIMEHeaderKey("to"), e.to)
 	header.Set(textproto.CanonicalMIMEHeaderKey("reply-to"), e.replyTo)
-	header.Set(textproto.CanonicalMIMEHeaderKey("content-type"), "text/html; charset=UTF-8")
+	if e.htmlBody != "" {
+		header.Set(textproto.CanonicalMIMEHeaderKey("content-type"), "text/html; charset=UTF-8")
+	} else {
+		header.Set(textproto.CanonicalMIMEHeaderKey("content-type"), "text/plain; charset=UTF-8")
+	}
 	header.Set(textproto.CanonicalMIMEHeaderKey("mime-version"), "1.0")
 	header.Set(textproto.CanonicalMIMEHeaderKey("subject"), e.subject)
 
@@ -297,8 +302,11 @@ func (e *email) send() error {
 		buffer.WriteString(fmt.Sprintf("%s: %s\r\n", key, value[0]))
 	}
 
-	// write body
-	buffer.WriteString(fmt.Sprintf("\r\n%s", e.htmlBody))
+	if e.htmlBody != "" {
+		buffer.WriteString(fmt.Sprintf("\r\n%s", e.htmlBody))
+	} else {
+		buffer.WriteString(fmt.Sprintf("\r\n%s", e.textBody))
+	}
 
 	if disableSendEmail {
 		fmt.Printf("DISABLE_SEND_EMAIL=1, email:\n----\n%s\n----\n", buffer.String())
