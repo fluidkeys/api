@@ -54,7 +54,7 @@ type helpKeyExpiredDeleted struct {
 func (e helpKeyExpiredDeleted) ID() string { return "help_key_expired_deleted" }
 func (e helpKeyExpiredDeleted) RenderInto(eml *email) (err error) {
 	eml.subject = helpKeyExpiredDeletedSubject
-	eml.htmlBody, err = render(helpKeyExpiredDeletedBodyTemplate, e)
+	eml.htmlBody, err = renderHTML(helpKeyExpiredDeletedBodyTemplate, e)
 	return err
 }
 
