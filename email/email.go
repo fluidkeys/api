@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"html/template"
 	"log"
 	"net/mail"
 	"net/smtp"
@@ -246,12 +245,12 @@ func (e *email) renderSubjectAndBody(data interface{}) (err error) {
 
 	switch templateName {
 	case "verify":
-		e.subject, err = render(verifySubjectTemplate, data)
+		e.subject, err = renderText(verifySubjectTemplate, data)
 		if err != nil {
 			return err
 		}
 
-		e.htmlBody, err = render(verifyHtmlBodyTemplate, data)
+		e.htmlBody, err = renderHTML(verifyHtmlBodyTemplate, data)
 		if err != nil {
 			return err
 		}
@@ -312,21 +311,6 @@ func (e *email) send() error {
 	}
 }
 
-func render(templateText string, emailTemplateData interface{}) (string, error) {
-
-	t, err := template.New("").Funcs(funcMap).Parse(templateText)
-
-	if err != nil {
-		return "", err
-	}
-	buf := bytes.NewBuffer(nil)
-	err = t.Execute(buf, emailTemplateData)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), nil
-}
-
 var (
 	disableSendEmail bool
 	smtpHost         string
@@ -343,16 +327,6 @@ type verifyEmail struct {
 	RequestTime      time.Time
 	KeyFingerprint   string
 	KeyCreatedDate   time.Time
-}
-
-// funcMap defines template functions that transform variables into strings in the template
-var funcMap = template.FuncMap{
-	"FormatDateTime": func(t time.Time) string {
-		return t.Format("15:04:05 MST on 2 January 2006")
-	},
-	"FormatDate": func(t time.Time) string {
-		return t.Format("2 January 2006")
-	},
 }
 
 var errRateLimit = fmt.Errorf("rate limit: not sending same email so soon")

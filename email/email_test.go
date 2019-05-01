@@ -25,14 +25,14 @@ func TestRenderVerifyEmail(t *testing.T) {
 	}
 
 	t.Run("test subject", func(t *testing.T) {
-		gotSubject, err := render(verifySubjectTemplate, data)
+		gotSubject, err := renderText(verifySubjectTemplate, data)
 		assert.NoError(t, err)
 
 		assert.Equal(t, expectedSubject, gotSubject)
 	})
 
 	t.Run("test html body", func(t *testing.T) {
-		gotHtml, err := render(verifyHtmlBodyTemplate, data)
+		gotHtml, err := renderHTML(verifyHtmlBodyTemplate, data)
 		assert.NoError(t, err)
 
 		assertEqualMultiLineStrings(t, expectedHtml, gotHtml)
