@@ -32,6 +32,9 @@ func main() {
 	} else if os.Args[1] == "send_emails" {
 		os.Exit(cmd.SendEmails())
 
+	} else if os.Args[1] == "send_test_emails" {
+		os.Exit(cmd.SendTestEmails())
+
 	} else {
 		fmt.Printf("unrecognised command: `%s`\n", os.Args[1])
 		os.Exit(1)
