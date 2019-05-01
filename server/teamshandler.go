@@ -329,7 +329,11 @@ func getTeamRosterHandler(w http.ResponseWriter, r *http.Request) {
 	encryptedJSON, err := encryptStringToArmor(string(plaintextJSON), requesterKey)
 
 	responseData := v1structs.GetTeamRosterResponse{
-		EncryptedJSON: encryptedJSON,
+		// TODO: EncryptedJSON is deprecated. When we're confident that fk clients are updated,
+		//       remove this field.
+		EncryptedJSON:            encryptedJSON,
+		TeamRoster:               rosterAndSig.TeamRoster,
+		ArmoredDetachedSignature: rosterAndSig.ArmoredDetachedSignature,
 	}
 
 	writeJsonResponse(w, responseData)
