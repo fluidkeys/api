@@ -956,6 +956,14 @@ func TestGetTeamRoster(t *testing.T) {
 			assert.Equal(t, team.RosterSignature, teamRosterAndSignature.ArmoredDetachedSignature)
 		})
 
+		t.Run("responseData.teamRoster", func(t *testing.T) {
+			assert.Equal(t, team.Roster, responseData.TeamRoster)
+		})
+
+		t.Run("responseData.armoredDetachedSignature", func(t *testing.T) {
+			assert.Equal(t, team.RosterSignature, responseData.ArmoredDetachedSignature)
+		})
+
 	})
 
 	testEndpointRejectsUnauthenticated(t, "GET", fmt.Sprintf("/v1/team/%s/roster", team.UUID), nil)
