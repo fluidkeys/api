@@ -69,6 +69,11 @@ func init() {
 		deleteRequestToJoinTeamHandler,
 	).Methods("DELETE")
 
+	subrouter.HandleFunc(
+		"/events",
+		createEventHandler,
+	).Methods("POST")
+
 }
 
 // Serve initializes the database and runs http.ListenAndServer
