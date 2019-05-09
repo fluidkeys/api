@@ -725,7 +725,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 		datastore.DeletePublicKey(exampledata.ExampleFingerprint2)
 	})
 
-	t.Run("existing {team, email, fingerprint} request should fail", func(t *testing.T) {
+	t.Run("existing {team, email, fingerprint} request should succeed", func(t *testing.T) {
 		team := datastore.Team{
 			UUID:            uuid.Must(uuid.NewV4()),
 			Roster:          "name = \"Example Team\"",
@@ -755,13 +755,8 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 			// same fingerprint as previous request: should succeed
 			requestData, &exampledata.ExampleFingerprint4)
 
-		t.Run("returns http 409 conflict", func(t *testing.T) {
-			assertStatusCode(t, http.StatusConflict, secondResponse.Code)
-		})
-
-		t.Run("with good error message", func(t *testing.T) {
-			assertHasJSONErrorDetail(t, secondResponse.Body,
-				"already got request to join team with that email and fingerprint")
+		t.Run("returns http 200 OK", func(t *testing.T) {
+			assertStatusCode(t, http.StatusOK, secondResponse.Code)
 		})
 	})
 }

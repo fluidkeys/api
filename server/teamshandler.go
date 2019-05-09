@@ -256,9 +256,8 @@ func createRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case errIdenticalRequestAlreadyExists:
-		writeJsonError(w,
-			fmt.Errorf("already got request to join team with that email and fingerprint"),
-			http.StatusConflict)
+		w.WriteHeader(http.StatusOK)
+		w.Write(nil)
 		return
 
 	case errConflictingRequestAlreadyExists:
