@@ -41,4 +41,4 @@
   name = "github.com/fluidkeys/fluidkeys"
 
   # run `dep ensure` after editing this to updte vendor
-  revision = "8caab409b98a09b6a15183791f13631d95572025"
+  revision = "08541d161b0b529bffaa910c7f0ee44779ca8c63"
