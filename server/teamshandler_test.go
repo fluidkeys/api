@@ -47,6 +47,7 @@ func TestCreateTeamHandler(t *testing.T) {
 
 	goodRoster := `
 uuid = "74bb40b4-3510-11e9-968e-53c38df634be"
+version = 3
 
 [[person]]
 email = "test4@example.com"
@@ -113,6 +114,27 @@ is_admin = false
 					now, team.CreatedAt)
 			}
 		})
+	})
+
+	t.Run("creates team from roster with missing version", func(t *testing.T) {
+		rosterNoVersion := `
+uuid = "0de4fe1e-7734-11e9-98db-c758e3a77a16"
+
+[[person]]
+email = "test4@example.com"
+fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
+`
+		sigNoVersion, err := makeArmoredDetachedSignature([]byte(rosterNoVersion), unlockedKey)
+		assert.NoError(t, err)
+
+		requestData := v1structs.UpsertTeamRequest{
+			TeamRoster:               rosterNoVersion,
+			ArmoredDetachedSignature: sigNoVersion,
+		}
+
+		response := callAPI(t, "POST", "/v1/teams", requestData, &signerFingerprint)
+		assertStatusCode(t, http.StatusCreated, response.Code)
 	})
 
 	t.Run("request doesn't contain signer fingerprint in auth header", func(t *testing.T) {
