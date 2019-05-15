@@ -140,8 +140,6 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 	})
 
 	t.Run("for a bad team UUID", func(t *testing.T) {
-		mismatchedFingerprint := exampledata.ExampleFingerprint2
-
 		response := callAPI(
 			t,
 			"GET",
@@ -153,14 +151,9 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 		assertStatusCode(t, http.StatusBadRequest, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"uuid: incorrect UUID length: foo")
-
-		_, err := datastore.DeletePublicKey(mismatchedFingerprint)
-		assert.NoError(t, err)
 	})
 
 	t.Run("for a team that doesn't exist", func(t *testing.T) {
-		mismatchedFingerprint := exampledata.ExampleFingerprint2
-
 		response := callAPI(
 			t,
 			"GET",
@@ -172,9 +165,6 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 		assertStatusCode(t, http.StatusNotFound, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
 			"team not found")
-
-		_, err := datastore.DeletePublicKey(mismatchedFingerprint)
-		assert.NoError(t, err)
 	})
 
 }
