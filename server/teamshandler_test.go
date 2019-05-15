@@ -349,7 +349,8 @@ is_admin = true
 		t.Run("with valid update request ", func(t *testing.T) {
 			roster1 := `
 				uuid = "74522e58-45be-11e9-b653-ab65bb61ab3b"
-				name = "BEFORE"
+				name = "Example Team"
+				version = 0
 
 				[[person]]
 				email = "test4@example.com"
@@ -363,17 +364,13 @@ is_admin = true
 
 			roster2 := `
 				uuid = "74522e58-45be-11e9-b653-ab65bb61ab3b"
-				name = "AFTER"
+				name = "Example Team"
+				version = 1
 
 				[[person]]
 				email = "test4@example.com"
 				fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
-				is_admin = true
-
-				[[person]]
-				email = "another@example.com"
-				fingerprint = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"  # <-- different!
-				is_admin = false`
+				is_admin = true`
 
 			requestData1 := makeSignedRequest(t, roster1, unlockedKey)
 			response1 := callAPI(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
@@ -389,7 +386,7 @@ is_admin = true
 			assert.NoError(t, err)
 
 			t.Run("team name was updated", func(t *testing.T) {
-				assert.Equal(t, "AFTER", retrievedTeam.Name)
+				assert.Equal(t, "Example Team", retrievedTeam.Name)
 			})
 
 			t.Run("team members were updated", func(t *testing.T) {
@@ -400,14 +397,45 @@ is_admin = true
 							"BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"),
 						IsAdmin: true,
 					},
-					{
-						Email:       "another@example.com",
-						Fingerprint: fpr.MustParse("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"),
-						IsAdmin:     false,
-					},
 				}
 				assert.Equal(t, expectedPeople, retrievedTeam.People)
 			})
+		})
+
+		t.Run("update with new version number of zero fails with specific error", func(t *testing.T) {
+			roster1 := `
+				uuid = "aafa17d2-7beb-11e9-afa0-8fb71de4d61b"
+				name = "Example Team"
+				version = 0
+
+				[[person]]
+				email = "test4@example.com"
+				fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+				is_admin = true`
+
+			roster2 := `
+				uuid = "aafa17d2-7beb-11e9-afa0-8fb71de4d61b"
+				name = "Example Team"
+				version = 0
+
+				[[person]]
+				email = "test4@example.com"
+				fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+				is_admin = true`
+
+			requestData1 := makeSignedRequest(t, roster1, unlockedKey)
+			response1 := callAPI(t, "POST", "/v1/teams", requestData1, &signerFingerprint)
+			assertStatusCode(t, http.StatusCreated, response1.Code)
+
+			requestData2 := makeSignedRequest(t, roster2, unlockedKey)
+			response2 := callAPI(t, "POST", "/v1/teams", requestData2, &signerFingerprint)
+
+			assertStatusCode(t, http.StatusBadRequest, response2.Code)
+			assertHasJSONErrorDetail(t,
+				response2.Body,
+				"updated roster missing a version number. upgrade to fluidkeys 1.1.???",
+			)
+
 		})
 
 		t.Run("signer cannot demote themselves as admin", func(t *testing.T) {

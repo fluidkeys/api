@@ -93,6 +93,13 @@ func upsertTeamHandler(w http.ResponseWriter, r *http.Request) {
 				return errNotAnAdminInExistingTeam
 			}
 
+			// `ValidateUpdate` will fail for updates from fk < 1.1.2
+			// TODO: detect the situation where a missing version was the cause of the problem
+			// and give a specific message telling them to upgrade.
+			if err := team.ValidateUpdate(existingTeam, newTeam, meInExistingTeam); err != nil {
+				return fmt.Errorf("error updating team %s: %v", existingTeam.UUID, err)
+			}
+
 		default: // some other error
 			return err
 
