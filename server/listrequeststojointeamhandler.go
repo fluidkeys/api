@@ -7,6 +7,7 @@ import (
 
 	"github.com/fluidkeys/api/datastore"
 	"github.com/fluidkeys/api/v1structs"
+	"github.com/fluidkeys/fluidkeys/team"
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
 )
@@ -37,9 +38,14 @@ func listRequestsToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		err = validateDataSignedByKey(dbTeam.Roster, dbTeam.RosterSignature, requesterKey)
+		t, err := team.Load(dbTeam.Roster, dbTeam.RosterSignature)
 		if err != nil {
-			return err
+			return fmt.Errorf("error loading team from db: %v", err)
+		}
+
+		meInTeam, err := t.GetPersonForFingerprint(requesterKey.Fingerprint())
+		if err != nil || !meInTeam.IsAdmin {
+			return errNotAnAdminInExistingTeam
 		}
 
 		requestsToJoinTeam, err = datastore.GetRequestsToJoinTeam(txn, teamUUID)
@@ -52,21 +58,24 @@ func listRequestsToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 	switch err {
 	case nil: // no error
 		break
+
 	case datastore.ErrNotFound:
 		writeJsonError(w, fmt.Errorf("team not found"), http.StatusNotFound)
 		return
+
 	case errBadSignature:
 		writeJsonError(w,
 			fmt.Errorf("team roster signature problem: %v", err),
 			http.StatusInternalServerError,
 		)
 		return
-	case errSignedByWrongKey:
+
+	case errNotAnAdminInExistingTeam:
 		writeJsonError(w,
-			fmt.Errorf("your key doesn't have access to list team join requests"),
-			http.StatusForbidden,
-		)
+			fmt.Errorf("only team admins can see requests to join the team"),
+			http.StatusForbidden)
 		return
+
 	default:
 		writeJsonError(w, err, http.StatusInternalServerError)
 		return
