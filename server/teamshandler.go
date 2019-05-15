@@ -358,7 +358,3 @@ func deleteRequestToJoinTeamHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 	w.Write(nil)
 }
-
-var (
-	errNotAnAdminInExistingTeam = fmt.Errorf("signing key is not an admin of the team")
-)
