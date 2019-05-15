@@ -25,6 +25,17 @@ uuid = "74bb40b4-3510-11e9-968e-53c38df634be"
 [[person]]
 email = "test4@example.com"
 fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
+
+[[person]]
+email = "test3@example.com"
+fingerprint = "7C18 DE4D E478 1356 8B24  3AC8 719B D63E F03B DC20"
+is_admin = true
+
+[[person]]
+email = "test2@example.com"
+fingerprint = "5C78 E71F 6FEF B558 2965  4CC5 343C C240 D350 C30C"
+is_admin = false
 `
 	unlockedKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(
 		exampledata.ExamplePrivateKey4, "test4")
@@ -46,6 +57,9 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 			datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey4))
 
 		assert.NoError(t,
+			datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey3))
+
+		assert.NoError(t,
 			datastore.LinkEmailToFingerprint(
 				nil, "test4@example.com", exampledata.ExampleFingerprint4, nil,
 			),
@@ -58,6 +72,9 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 
 	teardown := func() {
 		_, err := datastore.DeletePublicKey(exampledata.ExampleFingerprint4)
+		assert.NoError(t, err)
+
+		_, err = datastore.DeletePublicKey(exampledata.ExampleFingerprint3)
 		assert.NoError(t, err)
 
 		_, err = datastore.DeleteTeam(nil, teamUUID)
@@ -111,15 +128,34 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 		})
 	})
 
+	t.Run("allowed for 2nd admin fingerprint", func(t *testing.T) {
+		response := callAPI(
+			t,
+			"GET",
+			fmt.Sprintf("/v1/team/%s/requests-to-join", teamUUID),
+			nil,
+			&exampledata.ExampleFingerprint3, // 2nd admin
+		)
+
+		t.Run("status code 200", func(t *testing.T) {
+			assertStatusCode(t, http.StatusOK, response.Code)
+		})
+	})
+
 	testEndpointRejectsUnauthenticated(t,
 		"GET", fmt.Sprintf("/v1/team/%s/requests-to-join", teamUUID), nil)
 
-	t.Run("mismatch between signer fingerprint and long keyID in signature", func(t *testing.T) {
+	t.Run("forbidden if authenticated key is not a team admin", func(t *testing.T) {
 		mismatchedFingerprint := exampledata.ExampleFingerprint2
 
 		assert.NoError(t, datastore.UpsertPublicKey(nil, exampledata.ExamplePublicKey2))
 		assert.NoError(t,
 			datastore.LinkEmailToFingerprint(nil, "test2@example.com", mismatchedFingerprint, nil))
+
+		defer func() {
+			_, err := datastore.DeletePublicKey(mismatchedFingerprint)
+			assert.NoError(t, err)
+		}()
 
 		assert.NoError(t, err)
 
@@ -133,10 +169,7 @@ fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
 
 		assertStatusCode(t, http.StatusForbidden, response.Code)
 		assertHasJSONErrorDetail(t, response.Body,
-			"your key doesn't have access to list team join requests")
-
-		_, err := datastore.DeletePublicKey(mismatchedFingerprint)
-		assert.NoError(t, err)
+			"only team admins can see requests to join the team")
 	})
 
 	t.Run("for a bad team UUID", func(t *testing.T) {
