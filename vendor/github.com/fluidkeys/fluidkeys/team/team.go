@@ -182,6 +182,10 @@ func (t *Team) Validate() error {
 		fingerprintsSeen[person.Fingerprint] = true
 	}
 
+	if len(t.People) == 0 {
+		return fmt.Errorf("team has no members")
+	}
+
 	if len(t.Admins()) == 0 {
 		return fmt.Errorf("team has no administrators")
 	}
@@ -192,6 +196,16 @@ func (t *Team) Validate() error {
 func (t Team) IsAdmin(fingerprint fpr.Fingerprint) bool {
 	for _, person := range t.People {
 		if person.IsAdmin && person.Fingerprint == fingerprint {
+			return true
+		}
+	}
+	return false
+}
+
+// Contains returns whether the given fingerprint is a member of the team
+func (t Team) Contains(fingerprint fpr.Fingerprint) bool {
+	for _, person := range t.People {
+		if person.Fingerprint == fingerprint {
 			return true
 		}
 	}
@@ -212,10 +226,10 @@ func (t *Team) GetPersonForFingerprint(fingerprint fpr.Fingerprint) (*Person, er
 
 // GetUpsertPersonWarnings checks if the given request to join a team causes any other team member to
 // be overwritten, returning an error if so.
-func (t *Team) GetUpsertPersonWarnings(newPerson Person) (err error, existingPerson *Person) {
+func (t *Team) GetUpsertPersonWarnings(newPerson Person) (existingPerson *Person, err error) {
 	for _, existingPerson := range t.People {
 		if existingPerson == newPerson {
-			return ErrPersonWouldNotBeChanged, &existingPerson
+			return &existingPerson, ErrPersonWouldNotBeChanged
 		}
 
 		fingerprintsEqual := existingPerson.Fingerprint == newPerson.Fingerprint
@@ -228,20 +242,20 @@ func (t *Team) GetUpsertPersonWarnings(newPerson Person) (err error, existingPer
 		// 4. demoted from admin
 
 		if !fingerprintsEqual && emailsEqual && isAdminsEqual {
-			return ErrKeyWouldBeUpdated, &existingPerson
+			return &existingPerson, ErrKeyWouldBeUpdated
 		}
 
 		if !emailsEqual && fingerprintsEqual && isAdminsEqual {
-			return ErrEmailWouldBeUpdated, &existingPerson
+			return &existingPerson, ErrEmailWouldBeUpdated
 		}
 
 		if !isAdminsEqual && emailsEqual && fingerprintsEqual {
 			isPromotion := !existingPerson.IsAdmin && newPerson.IsAdmin
 
 			if isPromotion {
-				return ErrPersonWouldBePromotedToAdmin, &existingPerson
+				return &existingPerson, ErrPersonWouldBePromotedToAdmin
 			}
-			return ErrPersonWouldBeDemotedAsAdmin, &existingPerson
+			return &existingPerson, ErrPersonWouldBeDemotedAsAdmin
 		}
 
 	}
@@ -357,9 +371,10 @@ func fileExists(filename string) bool {
 
 // Team represents a group of people in Fluidkeys
 type Team struct {
-	UUID   uuid.UUID `toml:"uuid"`
-	Name   string    `toml:"name"`
-	People []Person  `toml:"person"`
+	UUID    uuid.UUID `toml:"uuid"`
+	Version uint      `toml:"version"`
+	Name    string    `toml:"name"`
+	People  []Person  `toml:"person"`
 
 	roster    string
 	signature string
