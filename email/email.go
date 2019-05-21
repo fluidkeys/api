@@ -127,6 +127,8 @@ func sendVerificationEmail(
 	}
 	log.Printf("sending verification email to %s for key %s",
 		emailAddress, publicKey.Fingerprint().Hex())
+
+	log.Printf("local verification link: %s", makeDevVerificationUrl(*verifySecretUUID))
 	return nil
 }
 
@@ -169,6 +171,10 @@ func shouldSendVerificationEmail(txn *sql.Tx, email string) (bool, error) {
 
 func makeVerificationUrl(secretUUID uuid.UUID) string {
 	return fmt.Sprintf("https://api.fluidkeys.com/v1/email/verify/%s", secretUUID.String())
+}
+
+func makeDevVerificationUrl(secretUUID uuid.UUID) string {
+	return fmt.Sprintf("http://localhost:4747/v1/email/verify/%s", secretUUID.String())
 }
 
 func sendEmail(
