@@ -21,7 +21,7 @@ func writeJsonResponse(w http.ResponseWriter, responseData interface{}) {
 }
 
 func writeJsonError(w http.ResponseWriter, err error, statusCode int) {
-	log.Print(err)
+	log.Printf("http %d: %v", statusCode, err)
 	responseData := v1structs.ErrorResponse{Detail: err.Error()}
 
 	out, err := json.MarshalIndent(responseData, "", "    ")

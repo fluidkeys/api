@@ -90,6 +90,9 @@ func upsertTeamHandler(w http.ResponseWriter, r *http.Request) {
 
 			meInExistingTeam, err := existingTeam.GetPersonForFingerprint(apparentSignerKey.Fingerprint())
 			if err != nil || !meInExistingTeam.IsAdmin {
+				log.Printf("key %s tried to update team %s but is not an admin: %v",
+					apparentSignerKey.Fingerprint(), existingTeam.UUID, err)
+
 				return errNotAnAdminInExistingTeam
 			}
 
