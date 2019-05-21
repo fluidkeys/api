@@ -35,6 +35,9 @@ func main() {
 	} else if os.Args[1] == "send_test_emails" {
 		os.Exit(cmd.SendTestEmails())
 
+	} else if os.Args[1] == "migrate_team_rosters" {
+		os.Exit(datastore.MigrateTeamRosters())
+
 	} else {
 		fmt.Printf("unrecognised command: `%s`\n", os.Args[1])
 		os.Exit(1)
