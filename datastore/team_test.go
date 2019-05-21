@@ -11,41 +11,55 @@ import (
 )
 
 func TestUpsertTeam(t *testing.T) {
+
 	team := Team{
-		UUID:            uuid.Must(uuid.NewV4()),
-		Roster:          "fake-roster",
+		UUID:            testUUID,
+		Roster:          rosterv1,
 		RosterSignature: "fake-signature",
 		CreatedAt:       now,
 	}
 
 	t.Run("creates a team with no error", func(t *testing.T) {
-
 		err := UpsertTeam(nil, team)
 		assert.NoError(t, err)
+
+		defer deleteTestTeam(t)
+
+		retrievedTeam, err := GetTeam(nil, testUUID)
+		assert.NoError(t, err)
+
+		t.Run("team.Roster contains the roster", func(t *testing.T) {
+			assert.Equal(t, rosterv1, retrievedTeam.Roster)
+		})
+
+		t.Run("team.Rosters is 1 long and [0] contains the roster", func(t *testing.T) {
+			assert.Equal(t, 1, len(retrievedTeam.Rosters))
+			assert.Equal(t, rosterv1, retrievedTeam.Rosters[0].Roster)
+		})
 	})
 
 	t.Run("team roster can be updated", func(t *testing.T) {
-		teamUUID := uuid.Must(uuid.NewV4())
 		originalTeam := Team{
-			UUID:            teamUUID,
-			Roster:          "original-roster",
+			UUID:            testUUID,
+			Roster:          rosterv1,
 			RosterSignature: "original-signature",
 			CreatedAt:       now,
 		}
 
 		updatedTeam := Team{
-			UUID:            teamUUID,
-			Roster:          "updated-roster",
+			UUID:            testUUID,
+			Roster:          rosterv2,
 			RosterSignature: "updated-signature",
 			CreatedAt:       later, // CreatedAt should *not* change on update
 		}
 		err := UpsertTeam(nil, originalTeam)
 		assert.NoError(t, err)
+		defer deleteTestTeam(t)
 
 		err = UpsertTeam(nil, updatedTeam)
 		assert.NoError(t, err)
 
-		retrievedTeam, err := GetTeam(nil, teamUUID)
+		retrievedTeam, err := GetTeam(nil, testUUID)
 		assert.NoError(t, err)
 
 		t.Run("roster has been updated", func(t *testing.T) {
@@ -60,12 +74,20 @@ func TestUpsertTeam(t *testing.T) {
 			assert.Equal(t, true, originalTeam.CreatedAt.Equal(retrievedTeam.CreatedAt))
 		})
 
+		t.Run("team.Rosters contains both versions of the roster in order", func(t *testing.T) {
+			assert.Equal(t, 2, len(retrievedTeam.Rosters))
+
+			assert.Equal(t, rosterv1, retrievedTeam.Rosters[0].Roster)
+			assert.Equal(t, rosterv2, retrievedTeam.Rosters[1].Roster)
+		})
+
 	})
 }
 
 func TestGetTeam(t *testing.T) {
 	t.Run("when team exists", func(t *testing.T) {
 		createTestTeam(t)
+		defer deleteTestTeam(t)
 
 		team, err := GetTeam(nil, testUUID)
 		assert.NoError(t, err)
@@ -74,7 +96,7 @@ func TestGetTeam(t *testing.T) {
 		}
 
 		assert.Equal(t, team.UUID, testUUID)
-		assert.Equal(t, team.Roster, "fake-roster")
+		assert.Equal(t, team.Roster, rosterv1)
 		assert.Equal(t, team.RosterSignature, "fake-signature")
 		if !team.CreatedAt.Equal(now) {
 			t.Fatalf("expected %s, got %s", team.CreatedAt, now)
@@ -95,6 +117,7 @@ func TestGetTeam(t *testing.T) {
 func TestTeamExists(t *testing.T) {
 	t.Run("when team exists", func(t *testing.T) {
 		createTestTeam(t)
+		defer deleteTestTeam(t)
 
 		exists, err := TeamExists(nil, testUUID)
 		assert.NoError(t, err)
@@ -113,11 +136,11 @@ func TestTeamExists(t *testing.T) {
 func TestDeleteTeam(t *testing.T) {
 	t.Run("when team exists", func(t *testing.T) {
 		createTestTeam(t)
+		defer deleteTestTeam(t) // in case delete fails
 
 		found, err := DeleteTeam(nil, testUUID)
 		assert.NoError(t, err)
 		assert.Equal(t, true, found)
-
 	})
 
 	t.Run("when team doesn't exist", func(t *testing.T) {
@@ -172,6 +195,7 @@ func TestGetRequestToJoinTeam(t *testing.T) {
 
 func TestDeleteRequestToJoinTeam(t *testing.T) {
 	createTestTeam(t)
+	defer deleteTestTeam(t)
 	requestUUID := createTestRequestToJoinTeam(t)
 
 	t.Run("when request exists", func(t *testing.T) {
@@ -320,7 +344,7 @@ func createTestTeam(t *testing.T) {
 	t.Helper()
 	team := Team{
 		UUID:            testUUID,
-		Roster:          "fake-roster",
+		Roster:          rosterv1,
 		RosterSignature: "fake-signature",
 		CreatedAt:       now,
 	}
@@ -351,5 +375,23 @@ func createTestRequestToJoinTeam(t *testing.T) uuid.UUID {
 var (
 	now      = time.Date(2018, 6, 15, 16, 30, 0, 0, time.UTC)
 	later    = now.Add(time.Duration(1) + time.Hour)
-	testUUID = uuid.Must(uuid.NewV4())
+	testUUID = uuid.Must(uuid.FromString("eb71f4ec-7bd2-11e9-afa9-a376c598b6ce"))
+	rosterv1 = `
+uuid = "eb71f4ec-7bd2-11e9-afa9-a376c598b6ce"
+version = 1
+
+[[person]]
+email = "test4@example.com"
+fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
+`
+	rosterv2 = `
+uuid = "eb71f4ec-7bd2-11e9-afa9-a376c598b6ce"
+version = 2
+
+[[person]]
+email = "test4@example.com"
+fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
+`
 )

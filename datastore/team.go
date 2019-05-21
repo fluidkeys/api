@@ -6,30 +6,52 @@ import (
 	"time"
 
 	fpr "github.com/fluidkeys/fluidkeys/fingerprint"
+	"github.com/fluidkeys/fluidkeys/team"
 	"github.com/gofrs/uuid"
 )
 
 // GetTeam returns a Team from the database
 func GetTeam(txn *sql.Tx, teamUUID uuid.UUID) (*Team, error) {
-	query := `SELECT uuid,
-                     created_at,
-					 roster,
-					 roster_signature
-		  FROM teams
-		  WHERE uuid=$1`
+	query := `SELECT uuid, created_at FROM teams WHERE uuid=$1`
 
 	team := Team{}
 
 	err := transactionOrDatabase(txn).QueryRow(query, teamUUID).Scan(
 		&team.UUID,
 		&team.CreatedAt,
-		&team.Roster,
-		&team.RosterSignature,
 	)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 
 	} else if err != nil {
+		return nil, err
+	}
+
+	team.Rosters = []TeamRoster{}
+
+	query = `SELECT roster, roster_signature
+              FROM roster_versions
+              WHERE team_uuid=$1
+			  ORDER BY version ASC`
+
+	rows, err := transactionOrDatabase(txn).Query(query, teamUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		r := TeamRoster{}
+		if err := rows.Scan(&r.Roster, &r.RosterSignature); err != nil {
+			return nil, err
+		}
+		team.Rosters = append(team.Rosters, r)
+
+		team.Roster = r.Roster
+		team.RosterSignature = r.RosterSignature
+	}
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -51,28 +73,35 @@ func TeamExists(txn *sql.Tx, teamUUID uuid.UUID) (bool, error) {
 	}
 }
 
-// UpsertTeam creates a team in the database.
-// If a team already exists with team.UUID it updates the team.
-func UpsertTeam(txn *sql.Tx, team Team) error {
-	query := `INSERT INTO teams (uuid, created_at, roster, roster_signature)
-	          VALUES ($1, $2, $3, $4)
-              ON CONFLICT (uuid) DO UPDATE
-              SET roster           = EXCLUDED.roster,
-                  roster_signature = EXCLUDED.roster_signature`
+// UpsertTeam creates a team in the `teams` table and inserts the roster into the
+// `roster_versions` table.
+// If the team already exists, the roster must have a new version number.
+func UpsertTeam(txn *sql.Tx, dbTeam Team) error {
+	t, err := team.Load(dbTeam.Roster, dbTeam.RosterSignature)
+	if err != nil {
+		return fmt.Errorf("error loading team %s: %v", dbTeam.UUID, err)
+	}
 
-	// query := `INSERT INTO teams (uuid, created_at, roster, roster_signature)
-	//           VALUES ($1, $2)
-	// 	  ON CONFLICT (uid) DO UPDATE
-	// 	      SET armored_public_key=EXCLUDED.armored_public_key`
+	query := `INSERT INTO teams (uuid, created_at)
+	          VALUES ($1, $2)
+              ON CONFLICT (uuid) DO NOTHING`
 
-	_, err := transactionOrDatabase(txn).Exec(
+	_, err = transactionOrDatabase(txn).Exec(query, dbTeam.UUID, dbTeam.CreatedAt)
+
+	query = `INSERT INTO roster_versions (
+                  team_uuid, created_at, version, roster, roster_signature
+              ) VALUES ($1, $2, $3, $4, $5)`
+	_, err = transactionOrDatabase(txn).Exec(
 		query,
-		team.UUID,
-		team.CreatedAt,
-		team.Roster,
-		team.RosterSignature,
+		dbTeam.UUID,
+		time.Now(),
+		t.Version,
+		dbTeam.Roster,
+		dbTeam.RosterSignature,
 	)
-
+	if err != nil {
+		return fmt.Errorf("error inserting into roster_versions: %v", err)
+	}
 	return err
 }
 
@@ -242,12 +271,29 @@ func GetRequestsToJoinTeam(txn *sql.Tx, teamUUID uuid.UUID) ([]RequestToJoinTeam
 
 // Team represents a team in the database
 type Team struct {
-	UUID   uuid.UUID
+	UUID uuid.UUID
+
+	// CreatedAt is the first time the team was saved.
+	CreatedAt time.Time
+
+	// Roster is the current TOML roster file
+	Roster string
+
+	// RosterSignature is the ASCII-armored, detached signature of the current Roster
+	RosterSignature string
+
+	// Rosters are versions of the roster, in order of oldest to newest. Depending where the
+	// Team was instantiated, Rosters may contain 1, some, or all versions of the roster.
+	Rosters []TeamRoster
+}
+
+// TeamRoster represents a particular version of the team's roster
+type TeamRoster struct {
+	// Roster is the TOML roster file
 	Roster string
 
 	// RosterSignature is the ASCII-armored, detached signature of the Roster
 	RosterSignature string
-	CreatedAt       time.Time
 }
 
 // RequestToJoinTeam represents a request to join a team in the database.
