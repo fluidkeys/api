@@ -330,9 +330,21 @@ func getTeamRosterHandler(w http.ResponseWriter, r *http.Request) {
 	responseData := v1structs.GetTeamRosterResponse{
 		// TODO: EncryptedJSON is deprecated. When we're confident that fk clients are updated,
 		//       remove this field.
-		EncryptedJSON:            encryptedJSON,
+		EncryptedJSON: encryptedJSON,
+		// TODO: TeamRoster and ArmoredDetachedSignature are deprecated. When we're confident
+		// that fk clients are updated, stop populating these fields.
 		TeamRoster:               rosterAndSig.TeamRoster,
 		ArmoredDetachedSignature: rosterAndSig.ArmoredDetachedSignature,
+		Rosters:                  []v1structs.TeamRosterAndSignature{},
+	}
+
+	for _, r := range dbTeam.Rosters {
+		responseData.Rosters = append(responseData.Rosters,
+			v1structs.TeamRosterAndSignature{
+				TeamRoster:               r.Roster,
+				ArmoredDetachedSignature: r.RosterSignature,
+			},
+		)
 	}
 
 	writeJsonResponse(w, responseData)
