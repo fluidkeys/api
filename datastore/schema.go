@@ -145,6 +145,18 @@ var migrateDatabaseStatements = []string{
 
                 user_profile_uuid UUID NOT NULL REFERENCES user_profiles(uuid) ON DELETE CASCADE
 	)`,
+
+	`CREATE TABLE IF NOT EXISTS roster_versions (
+                created_at TIMESTAMP NOT NULL,
+
+                version INT NOT NULL,
+                roster TEXT NOT NULL,
+                roster_signature TEXT NOT NULL,
+
+                team_uuid UUID NOT NULL REFERENCES teams(uuid) ON DELETE CASCADE,
+
+                UNIQUE (team_uuid, version)
+	)`,
 }
 
 // allTables is used by the test helper DropAllTheTables to keep track of what tables to
@@ -158,5 +170,6 @@ var allTables = []string{
 	"user_profiles",
 	"keys",
 	"team_join_requests",
+	"roster_versions",
 	"teams",
 }
