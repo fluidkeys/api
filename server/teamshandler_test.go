@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -350,6 +351,7 @@ is_admin = true
 			roster1 := `
 				uuid = "74522e58-45be-11e9-b653-ab65bb61ab3b"
 				name = "BEFORE"
+				version = 1
 
 				[[person]]
 				email = "test4@example.com"
@@ -364,6 +366,7 @@ is_admin = true
 			roster2 := `
 				uuid = "74522e58-45be-11e9-b653-ab65bb61ab3b"
 				name = "AFTER"
+				version = 2
 
 				[[person]]
 				email = "test4@example.com"
@@ -586,12 +589,37 @@ func TestGetTeamHandler(t *testing.T) {
 
 	t.Run("for a team with a unparseable roster", func(t *testing.T) {
 		badRosterTeam := datastore.Team{
-			UUID:      uuid.Must(uuid.FromString("e9e6ab6e-3b67-11e9-a57c-8f865d47e520")),
-			Roster:    "broken roster, no team name",
-			CreatedAt: now,
+			UUID:            uuid.Must(uuid.NewV4()),
+			Roster:          "broken roster, no team name",
+			RosterSignature: "bad signature",
+			CreatedAt:       now,
 		}
 
-		assert.NoError(t, datastore.UpsertTeam(nil, badRosterTeam))
+		err := datastore.RunInTransaction(func(txn *sql.Tx) error {
+			_, err := txn.Exec(
+				"INSERT INTO teams (uuid, created_at) VALUES($1, $2)",
+				badRosterTeam.UUID,
+				badRosterTeam.CreatedAt,
+			)
+			if err != nil {
+				return err
+			}
+			_, err = txn.Exec(
+				`INSERT INTO roster_versions (
+                    version,
+				    team_uuid,
+                    created_at,
+                    roster,
+                    roster_signature)
+                 VALUES(1, $1, $2, $3, $4)`,
+				badRosterTeam.UUID,
+				badRosterTeam.CreatedAt,
+				badRosterTeam.Roster,
+				badRosterTeam.RosterSignature,
+			)
+			return err
+		})
+		assert.NoError(t, err)
 		defer func() {
 			datastore.DeleteTeam(nil, badRosterTeam.UUID)
 		}()
@@ -612,14 +640,37 @@ func TestGetTeamHandler(t *testing.T) {
 	})
 }
 
+func createExampleTeam(t *testing.T, createdAt time.Time) datastore.Team {
+	t.Helper()
+
+	roster := `
+uuid = "aee4b386-3b52-11e9-a620-2381a199e2c8"
+name = "Example Team"
+version = 1
+
+[[person]]
+email = "test4@example.com"
+fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true`
+
+	sig := ""
+
+	team, err := team.Load(roster, sig)
+	assert.NoError(t, err)
+
+	dbTeam := datastore.Team{
+		UUID:            team.UUID,
+		Roster:          roster,
+		RosterSignature: sig,
+		CreatedAt:       createdAt,
+	}
+	return dbTeam
+}
+
 func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 	now := time.Date(2019, 2, 28, 16, 35, 45, 0, time.UTC)
-	exampleTeam := datastore.Team{
-		UUID:            uuid.Must(uuid.FromString("aee4b386-3b52-11e9-a620-2381a199e2c8")),
-		Roster:          "name = \"Example Team\"",
-		RosterSignature: "",
-		CreatedAt:       now,
-	}
+
+	exampleTeam := createExampleTeam(t, now)
 
 	setup := func() {
 		assert.NoError(t, datastore.UpsertTeam(nil, exampleTeam))
@@ -639,16 +690,26 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	deleteRequests := func() {
+		err := datastore.RunInTransaction(func(txn *sql.Tx) error {
+			_, err := txn.Exec("DELETE FROM team_join_requests WHERE team_uuid=$1",
+				exampleTeam.UUID)
+			return err
+		})
+		assert.NoError(t, err)
+	}
+
 	setup()
 	defer teardown()
 
 	t.Run("create a request to join a team", func(t *testing.T) {
+
 		requestData := v1structs.RequestToJoinTeamRequest{
 			TeamEmail: "test4@example.com",
 		}
 
 		mockResponse := callAPI(t,
-			"POST", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8/requests-to-join",
+			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", exampleTeam.UUID),
 			requestData, &exampledata.ExampleFingerprint4)
 
 		t.Run("status code 201 created", func(t *testing.T) {
@@ -657,11 +718,11 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 	})
 
 	testEndpointRejectsBadJSON(t,
-		"POST", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8/requests-to-join",
+		"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", exampleTeam.UUID),
 		&exampledata.ExampleFingerprint4)
 
 	testEndpointRejectsUnauthenticated(t,
-		"POST", "/v1/team/aee4b386-3b52-11e9-a620-2381a199e2c8/requests-to-join",
+		"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", exampleTeam.UUID),
 		v1structs.RequestToJoinTeamRequest{})
 
 	t.Run("for non existent team", func(t *testing.T) {
@@ -693,18 +754,6 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 	})
 
 	t.Run("existing {team, email}, but different fingerprint should error", func(t *testing.T) {
-		team := datastore.Team{
-			UUID:            uuid.Must(uuid.NewV4()),
-			Roster:          "name = \"Example Team\"",
-			RosterSignature: "",
-			CreatedAt:       now,
-		}
-		assert.NoError(t, datastore.UpsertTeam(nil, team))
-		defer func() {
-			_, err := datastore.DeleteTeam(nil, team.UUID)
-			assert.NoError(t, err)
-		}()
-
 		requestData := v1structs.RequestToJoinTeamRequest{
 			TeamEmail: "conflicting-example@example.com",
 		}
@@ -714,8 +763,10 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 				nil, "conflicting-example@example.com", exampledata.ExampleFingerprint4, nil,
 			))
 
+		deleteRequests()
+
 		firstResponse := callAPI(t,
-			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
+			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", exampleTeam.UUID),
 			requestData, &exampledata.ExampleFingerprint4)
 
 		assertStatusCode(t, http.StatusCreated, firstResponse.Code) // first request succeeds
@@ -729,7 +780,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 			))
 
 		secondResponse := callAPI(t,
-			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
+			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", exampleTeam.UUID),
 			// same {team, email}, *different* fingerprint
 			requestData, &exampledata.ExampleFingerprint2,
 		)
@@ -748,24 +799,14 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 	})
 
 	t.Run("existing {team, email, fingerprint} request should succeed", func(t *testing.T) {
-		team := datastore.Team{
-			UUID:            uuid.Must(uuid.NewV4()),
-			Roster:          "name = \"Example Team\"",
-			RosterSignature: "",
-			CreatedAt:       now,
-		}
-		assert.NoError(t, datastore.UpsertTeam(nil, team))
-		defer func() {
-			_, err := datastore.DeleteTeam(nil, team.UUID)
-			assert.NoError(t, err)
-		}()
-
 		requestData := v1structs.RequestToJoinTeamRequest{
 			TeamEmail: "test4@example.com",
 		}
 
+		deleteRequests()
+
 		firstResponse := callAPI(t,
-			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
+			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", exampleTeam.UUID),
 			requestData, &exampledata.ExampleFingerprint4)
 
 		if firstResponse.Code != http.StatusCreated {
@@ -773,7 +814,7 @@ func TestCreateRequestToJoinTeamHandler(t *testing.T) {
 		}
 
 		secondResponse := callAPI(t,
-			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", team.UUID),
+			"POST", fmt.Sprintf("/v1/team/%s/requests-to-join", exampleTeam.UUID),
 			// same fingerprint as previous request: should succeed
 			requestData, &exampledata.ExampleFingerprint4)
 
@@ -793,6 +834,7 @@ uuid = "74bb40b4-3510-11e9-968e-53c38df634be"
 [[person]]
 email = "test4@example.com"
 fingerprint = "BB3C 44BF 188D 56E6 35F4  A092 F73D 2F05 33D7 F9D6"
+is_admin = true
 `
 	unlockedKey, err := pgpkey.LoadFromArmoredEncryptedPrivateKey(
 		exampledata.ExamplePrivateKey4, "test4")
